@@ -4,8 +4,9 @@
 This project is designed to parse large financial documents into JSON files of just the income statements. The idea is to find the context and "story" of what the data shows and use an LLM to explain it.
 
 ## Tech Stack
-- **Frontend**: React & Vite
-- **Backend**: Python & FastAPI
+- **Frontend**: React & Vite & TypeScript
+- **Middleware**: FastAPI
+- **Backend**: Python & PyMuPDF
 - **LLMS**: Mistral & LLaMA 3
 
 ## Installation
