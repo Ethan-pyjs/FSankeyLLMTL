@@ -6,7 +6,7 @@ This project is designed to parse large financial documents into JSON files of j
 ## Tech Stack
 - **Frontend**: React & Vite
 - **Backend**: Python & FastAPI
-- **LLMS**: Mistral & LLaMA 3.3
+- **LLMS**: Mistral & LLaMA 3
 
 ## Installation
 1. Clone the repository:
