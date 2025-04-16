@@ -1,17 +1,17 @@
-# FinancialProject
+# Financial-Sankey-StoryTeller
 
 ## Description
-A project designed to manage and analyze financial data efficiently. This tool aims to simplify financial tracking and provide insightful analytics.
+This project is designed to parse large financial documents into JSON files of just the income statements. The idea is to find the context and "story" of what the data shows and use an LLM to explain it.
 
-## Features
-- **Data Management**: Organize and store financial records.
-- **Analytics**: Generate reports and visualizations.
-- **User-Friendly Interface**: Easy to navigate and use.
+## Tech Stack
+- **Frontend**: React & Vite
+- **Backend**: Python & FastAPI
+- **LLMS**: Mistral & LLaMA 3.3
 
 ## Installation
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/FinancialProject.git
+    git clone https://github.com/Ethan-pyjs/FinancialProject.git
     ```
 2. Navigate to the project directory:
     ```bash
@@ -22,32 +22,5 @@ A project designed to manage and analyze financial data efficiently. This tool a
     npm install
     ```
 
-## Usage
-1. Start the application:
-    ```bash
-    npm start
-    ```
-2. Open your browser and navigate to `http://localhost:3000`.
-
-## Contributing
-Contributions are welcome! Please follow these steps:
-1. Fork the repository.
-2. Create a new branch:
-    ```bash
-    git checkout -b feature-name
-    ```
-3. Commit your changes:
-    ```bash
-    git commit -m "Add feature-name"
-    ```
-4. Push to the branch:
-    ```bash
-    git push origin feature-name
-    ```
-5. Open a pull request.
-
 ## License
 This project is licensed under the [MIT License](LICENSE).
-
-## Contact
-For questions or feedback, please contact Ethan Pham at [phamethanv@gmail.com].
