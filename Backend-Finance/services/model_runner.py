@@ -1,14 +1,15 @@
-# Code to run LLM locally (Ollama or llama.cpp)
-import subprocess
+import requests
 
 def query_model(prompt: str, model: str = "mistral") -> str:
+    url = "http://localhost:11434/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False
+    }
     try:
-        result = subprocess.run(
-            ["ollama", "run", model],
-            input=prompt.encode("utf-8"),
-            capture_output=True,
-            timeout=60
-        )
-        return result.stdout.decode("utf-8").strip()
-    except subprocess.TimeoutExpired:
-        return "Model query timed out."
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        return response.json().get("response", "").strip()
+    except requests.RequestException as e:
+        return f"Error querying model: {e}"
