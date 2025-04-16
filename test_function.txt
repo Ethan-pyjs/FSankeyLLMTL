@@ -1,0 +1,14 @@
+# Test Function for Running the App
+
+## Backend:
+1. Navigate to the backend directory:
+   ```bash
+   cd Backend-Finance
+2. Start the backend server
+    uvicorn main:app --reload
+
+## Fronend:
+1. Navigate to the frontend directory:
+    cd Financial-Sankey-StoryTeller
+2. Start the frontend development server:
+    npm run dev
