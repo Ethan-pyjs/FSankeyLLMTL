@@ -5,22 +5,39 @@ export default function UploadForm() {
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
-  const handleUpload = async () => {
-    if (!file) return
-    setLoading(true)
+  // In UploadForm.tsx, modify the handleUpload function
+const handleUpload = async () => {
+  if (!file) return
+  setLoading(true)
 
-    const formData = new FormData()
-    formData.append('file', file)
+  const formData = new FormData()
+  formData.append('file', file)
 
+  try {
+    console.log("Sending request to backend...")
     const res = await fetch('http://127.0.0.1:8000/api/process', {
       method: 'POST',
       body: formData,
     })
-
+    
+    console.log("Received response:", res)
+    
+    if (!res.ok) {
+      throw new Error(`Server responded with status: ${res.status}`)
+    }
+    
     const data = await res.json()
+    console.log("Parsed data:", data)
+    
     setResponse(data)
+  } catch (error) {
+    console.error("Error during upload:", error)
+    // Optionally show an error message to the user
+    alert("Error processing file. Check console for details.")
+  } finally {
     setLoading(false)
   }
+}
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow">
