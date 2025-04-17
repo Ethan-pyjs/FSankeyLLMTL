@@ -5,7 +5,7 @@ This project is designed to parse large financial documents into JSON files of j
 
 ## Tech Stack
 - **Frontend**: React & Vite & TypeScript + recharts
-- **Middleware**: FastAPI
+- **Middleware**: FastAPI & CORS (Cross-Origin Resource Sharing)
 - **Backend**: Python & PyMuPDF
 - **LLMS**: Mistral & LLaMA 3
 
