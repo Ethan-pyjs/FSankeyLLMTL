@@ -14,7 +14,7 @@ export default function UploadForm() {
     formData.append('file', file)
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/process', {
+      const res = await fetch('https://your-backend.onrender.com/api/process', {
         method: 'POST',
         body: formData,
       })
