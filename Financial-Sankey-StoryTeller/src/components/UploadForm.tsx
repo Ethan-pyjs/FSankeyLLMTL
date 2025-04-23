@@ -6,6 +6,8 @@ export default function UploadForm() {
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
   const handleUpload = async () => {
     if (!file) return
     setLoading(true)
@@ -14,7 +16,7 @@ export default function UploadForm() {
     formData.append('file', file)
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/process', {
+      const res = await fetch(`${API_URL}/api/process`, {
         method: 'POST',
         body: formData,
       })
