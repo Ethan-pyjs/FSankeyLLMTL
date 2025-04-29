@@ -239,7 +239,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
             nodeWidth={20}
           >
             <Tooltip 
-              formatter={(value: any, name: any, props: any) => {
+              formatter={(value: any, _name: any, props: any) => {
                 // Use the absoluteValue if available for better display
                 const displayValue = props.payload.absoluteValue !== undefined 
                   ? props.payload.absoluteValue 
