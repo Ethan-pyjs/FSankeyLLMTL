@@ -1,10 +1,21 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import SankeyChart from './SankeyChart'
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFile(e.target.files?.[0] || null)
+  }
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click()
+  }
 
   const handleUpload = async () => {
     if (!file) return
@@ -14,7 +25,7 @@ export default function UploadForm() {
     formData.append('file', file)
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/process', {
+      const res = await fetch(`http://127.0.0.1:8000/api/process`, {
         method: 'POST',
         body: formData,
       })
@@ -36,45 +47,68 @@ export default function UploadForm() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow">
-      <div className="mb-6">
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="mb-4"
-        />
-        <button
-          onClick={handleUpload}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          disabled={loading}
-        >
-          {loading ? 'Processing...' : 'Upload and Analyze'}
-        </button>
-      </div>
-
-      {response && (
-        <div className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Income Statement:</h2>
-              <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto max-h-80">
-                {JSON.stringify(response.income_statement, null, 2)}
-              </pre>
-            </div>
+    <div className="flex flex-col items-center w-full">
+      <div className="w-full max-w-4xl bg-black bg-opacity-40 p-6 md:p-8 rounded-lg shadow-xl border border-purple-500 border-opacity-20 backdrop-filter backdrop-blur-sm">
+        <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
+          <div className="w-full">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
             
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Generated Story:</h2>
-              <p className="bg-gray-50 p-4 rounded overflow-y-auto max-h-80">
-                {response.story}
-              </p>
-            </div>
+            <button 
+              onClick={handleButtonClick}
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-md flex items-center justify-between border border-purple-500 border-opacity-30 transition-all duration-200"
+            >
+              <span className="mr-2 font-medium">Browse</span>
+              <span className="text-gray-300 text-sm truncate max-w-xs">
+                {file ? file.name : 'No file selected'}
+              </span>
+            </button>
           </div>
           
-          {/* Add the Sankey chart */}
-          <SankeyChart incomeStatement={response.income_statement} />
+          <button
+            onClick={handleUpload}
+            disabled={loading || !file}
+            className={`px-6 py-3 rounded-md font-medium transition-all duration-200 transform hover:scale-105 flex-shrink-0 w-full md:w-auto ${
+              loading || !file 
+                ? 'bg-gray-600 cursor-not-allowed' 
+                : 'bg-purple-700 hover:bg-purple-600 text-white hover:shadow-lg'
+            }`}
+          >
+            {loading ? 'Processing...' : 'Upload and Analyze'}
+          </button>
         </div>
-      )}
+
+        {response && (
+          <div className="mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
+                <h2 className="text-xl font-semibold mb-2 text-purple-200">Income Statement:</h2>
+                <pre className="bg-black bg-opacity-50 p-4 rounded text-sm overflow-x-auto max-h-80 text-gray-200">
+                  {JSON.stringify(response.income_statement, null, 2)}
+                </pre>
+              </div>
+              
+              <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
+                <h2 className="text-xl font-semibold mb-2 text-purple-200">Generated Story:</h2>
+                <p className="bg-black bg-opacity-30 p-4 rounded overflow-y-auto max-h-80 text-gray-200">
+                  {response.story}
+                </p>
+              </div>
+            </div>
+            
+            {/* Add the Sankey chart with updated styling */}
+            <div className="mt-6 bg-gray-900 bg-opacity-50 p-4 rounded-lg border border-purple-500 border-opacity-20">
+              <h2 className="text-xl font-semibold mb-4 text-purple-200">Financial Flow Visualization:</h2>
+              <SankeyChart incomeStatement={response.income_statement} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
