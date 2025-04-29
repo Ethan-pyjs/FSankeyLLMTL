@@ -1,16 +1,19 @@
-# app.py or main.py
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from services.parse_pdf import extract_income_statement
 from services.generate_story import generate_story_from_json
-import io
+import os
 
 app = FastAPI()
 
-# Enable CORS
+# Get environment variables
+PORT = int(os.environ.get("PORT", 8000))
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+# Enable CORS - update with your deployed frontend URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Add your frontend URL
+    allow_origins=[FRONTEND_URL, "http://localhost:3000"],  # Add your frontend URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +35,11 @@ async def process_pdf(file: UploadFile = File(...)):
         "story": story
     }
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)

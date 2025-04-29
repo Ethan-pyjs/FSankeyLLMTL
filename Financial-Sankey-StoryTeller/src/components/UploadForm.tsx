@@ -5,17 +5,8 @@ export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] || null)
-  }
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click()
-  }
 
   const handleUpload = async () => {
     if (!file) return
@@ -25,7 +16,7 @@ export default function UploadForm() {
     formData.append('file', file)
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/process`, {
+      const res = await fetch(`${API_URL}/api/process`, {
         method: 'POST',
         body: formData,
       })
