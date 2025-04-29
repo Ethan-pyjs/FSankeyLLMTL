@@ -19,6 +19,10 @@ def extract_income_statement(pdf_bytes):
     2. Do not include any explanations, markdown formatting, or text outside the JSON
     3. Use double quotes for keys and string values
     4. Include fields like "Revenue", "Cost_of_Revenue", "Gross_Profit", "Operating_Expenses", "Net_Income" if available
+    5. If a field is not available, set its value to "Unknown"
+    6. Make sure that data is a number in millions of dollars
+    7. If the data is not in millions, convert it to millions (e.g., 1,000,000 becomes 1)
+    8. If the data is not a number, set it to "Unknown"
     
     Financial Document Text:
     \"\"\"{text}\"\"\"
