@@ -24,5 +24,17 @@ This project is designed to parse large financial documents into JSON files of j
     npm install
     ```
 
+4. Backend Installation
+    ```bash
+    cd Backend-Finance
+    ```
+5. Install Dependencies
+    ```bash
+    pip install -r requirements.txt
+    ```
+6. Run the server
+    ```bash
+    uvicorn main:app --reload
+    ```
 ## License
 This project is licensed under the [MIT License](LICENSE).
