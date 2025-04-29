@@ -17,7 +17,15 @@ interface SankeyData {
 }
 
 interface SankeyChartProps {
-  incomeStatement: any;
+  incomeStatement: {
+    Revenue?: number | string;
+    Cost_of_Revenue?: number | string;
+    Gross_Profit?: number | string;
+    Operating_Expenses?: number | string;
+    Operating_Income?: number | string;
+    Net_Income?: number | string;
+    [key: string]: number | string | undefined;
+  };
 }
 
 export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
@@ -28,90 +36,120 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     try {
       if (!incomeStatement) return;
       
-      // Convert entire income statement object to a single string for analysis
-      const allText = JSON.stringify(incomeStatement);
+      // Clean and convert income statement data
+      const cleanedData: Record<string, number> = {};
+      const unknownFields: string[] = [];
       
-      // Function to find all monetary values in text
-      const findMonetaryValues = (text: string) => {
-        // Match patterns like "$33.9 billion" or "33.9 billion dollars" or "$33,916"
-        const regex = /\$?(\d+(?:[.,]\d+)?)\s*(?:billion|million|thousand|[mb]|k)?/gi;
-        const matches = [...text.matchAll(regex)];
+      // Process each field and convert "Unknown" to estimated values
+      Object.entries(incomeStatement).forEach(([key, value]) => {
+        if (key === "error") return; // Skip error field
         
-        return matches.map(match => {
-          const value = parseFloat(match[1].replace(/,/g, ''));
-          const unit = match[0].toLowerCase();
-          
-          if (unit.includes('billion') || unit.includes('b')) {
-            return value * 1000000000;
-          } else if (unit.includes('million') || unit.includes('m')) {
-            return value * 1000000;
-          } else if (unit.includes('thousand') || unit.includes('k')) {
-            return value * 1000;
+        // Convert string values to numbers if possible
+        if (typeof value === "string" && value !== "Unknown") {
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue)) {
+            cleanedData[key] = numValue;
+          } else {
+            unknownFields.push(key);
           }
-          return value;
-        });
-      };
+        } else if (typeof value === "number") {
+          cleanedData[key] = value;
+        } else {
+          unknownFields.push(key);
+        }
+      });
       
-      // Find all monetary values in the text
-      const values = findMonetaryValues(allText);
-      
-      // Sort values in descending order
-      const sortedValues = [...values].sort((a, b) => b - a);
-      
-      // If we have fewer than 2 values, we can't create a meaningful chart
-      if (sortedValues.length < 2) {
+      // If we have too many unknown values, we can't create a meaningful chart
+      if (Object.keys(cleanedData).length < 2) {
         setError("Not enough financial data found to create a visualization");
         return;
       }
       
-      // Use the largest value as revenue
-      const estimatedRevenue = sortedValues[0];
+      // Estimate missing values if necessary
+      if (!cleanedData.Revenue && cleanedData.Net_Income) {
+        // Estimate Revenue based on typical net margin
+        cleanedData.Revenue = cleanedData.Net_Income / 0.15; // Assuming 15% net margin
+      }
       
-      // Find net income - try to find it in the text or use a medium-sized value
-      let netIncome = 0;
-      
-      // Look for net income in the text
-      if (allText.toLowerCase().includes('net income')) {
-        const netIncomeIndex = allText.toLowerCase().indexOf('net income');
-        const netIncomeText = allText.substring(netIncomeIndex, netIncomeIndex + 200);
-        const netIncomeValues = findMonetaryValues(netIncomeText);
+      if (cleanedData.Revenue) {
+        // Estimate Cost of Revenue if missing
+        if (!cleanedData.Cost_of_Revenue) {
+          cleanedData.Cost_of_Revenue = cleanedData.Revenue * 0.65; // Typical COGS ratio
+        }
         
-        if (netIncomeValues.length > 0) {
-          netIncome = netIncomeValues[0];
+        // Estimate Gross Profit if missing
+        if (!cleanedData.Gross_Profit) {
+          cleanedData.Gross_Profit = cleanedData.Revenue - (cleanedData.Cost_of_Revenue || 0);
+        }
+        
+        // Estimate Operating Expenses if missing
+        if (!cleanedData.Operating_Expenses && cleanedData.Gross_Profit && cleanedData.Operating_Income) {
+          cleanedData.Operating_Expenses = cleanedData.Gross_Profit - cleanedData.Operating_Income;
+        } else if (!cleanedData.Operating_Expenses && cleanedData.Gross_Profit) {
+          cleanedData.Operating_Expenses = cleanedData.Gross_Profit * 0.7; // Typical OpEx ratio
+        }
+        
+        // Estimate Operating Income if missing
+        if (!cleanedData.Operating_Income && cleanedData.Gross_Profit && cleanedData.Operating_Expenses) {
+          cleanedData.Operating_Income = cleanedData.Gross_Profit - cleanedData.Operating_Expenses;
+        }
+        
+        // Estimate Net Income if missing
+        if (!cleanedData.Net_Income && cleanedData.Operating_Income) {
+          cleanedData.Net_Income = cleanedData.Operating_Income * 0.75; // Accounting for taxes, etc.
         }
       }
       
-      // If we couldn't find net income, use a mid-sized value from our sorted list
-      if (netIncome === 0 && sortedValues.length > 2) {
-        netIncome = sortedValues[Math.floor(sortedValues.length / 2)];
-      }
-      
-      // Calculate other financials based on typical ratios
-      const estimatedCostOfRevenue = estimatedRevenue * 0.65;
-      const estimatedGrossProfit = estimatedRevenue - estimatedCostOfRevenue;
-      const estimatedOpEx = estimatedGrossProfit - netIncome;
-      
-      // Create Sankey nodes and links
-      const nodes = [
+      // Create Sankey nodes
+      const nodes: SankeyNode[] = [
         { name: 'Revenue' },
         { name: 'Cost of Revenue' },
         { name: 'Gross Profit' },
         { name: 'Operating Expenses' },
+        { name: 'Operating Income' },
         { name: 'Net Income' }
       ];
       
-      // Ensure all values are positive and significant
-      const safeValue = (val: number) => Math.max(estimatedRevenue * 0.001, Math.abs(val));
+      // Create Sankey links with positive values
+      const minValue = Math.max(1, cleanedData.Revenue ? cleanedData.Revenue * 0.001 : 1);
       
-      const links = [
-        { source: 0, target: 1, value: safeValue(estimatedCostOfRevenue) },
-        { source: 0, target: 2, value: safeValue(estimatedGrossProfit) },
-        { source: 2, target: 3, value: safeValue(estimatedOpEx) },
-        { source: 2, target: 4, value: safeValue(netIncome) }
+      const links: SankeyLink[] = [
+        // Revenue splits into Cost of Revenue and Gross Profit
+        { 
+          source: 0, 
+          target: 1, 
+          value: Math.max(minValue, cleanedData.Cost_of_Revenue || 0) 
+        },
+        { 
+          source: 0, 
+          target: 2, 
+          value: Math.max(minValue, cleanedData.Gross_Profit || 0) 
+        },
+        // Gross Profit splits into Operating Expenses and Operating Income
+        { 
+          source: 2, 
+          target: 3, 
+          value: Math.max(minValue, cleanedData.Operating_Expenses || 0) 
+        },
+        { 
+          source: 2, 
+          target: 4, 
+          value: Math.max(minValue, cleanedData.Operating_Income || 0) 
+        },
+        // Operating Income flows to Net Income
+        { 
+          source: 4, 
+          target: 5, 
+          value: Math.max(minValue, cleanedData.Net_Income || 0) 
+        }
       ];
       
       setData({ nodes, links });
       setError(null);
+      
+      // Debug data
+      console.log("Sankey Chart Data:", { nodes, links, cleanedData });
+      
     } catch (err) {
       console.error("Error creating Sankey chart:", err);
       setError("Failed to create visualization. Please check console for details.");
@@ -130,31 +168,41 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
 
   if (error) {
     return (
-      <div className="w-full mt-6 p-4 bg-red-50 border border-red-200 rounded">
-        <h2 className="text-xl font-semibold mb-2">Income Flow Visualization</h2>
-        <p className="text-red-600">{error}</p>
+      <div className="w-full p-4 bg-gray-800 bg-opacity-50 border border-red-500 border-opacity-30 rounded-lg text-gray-200">
+        <h2 className="text-xl font-semibold mb-2 text-purple-200">Income Flow Visualization</h2>
+        <p className="text-red-400">{error}</p>
+        <p className="mt-2 text-sm">Try uploading a different financial document with clearer income statement data.</p>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="w-full mt-6 p-4 bg-gray-50 border border-gray-200 rounded">
-        <h2 className="text-xl font-semibold mb-2">Income Flow Visualization</h2>
-        <p>Loading chart data...</p>
+      <div className="w-full p-4 bg-gray-800 bg-opacity-50 border border-purple-500 border-opacity-20 rounded-lg text-gray-200">
+        <h2 className="text-xl font-semibold mb-2 text-purple-200">Income Flow Visualization</h2>
+        <p>Preparing visualization...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-96 mt-6">
-      <h2 className="text-xl font-semibold mb-4">Income Flow Visualization</h2>
-      <div className="w-full h-full bg-white rounded shadow p-4">
+    <div className="w-full h-96">
+      <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
         <ResponsiveContainer width="100%" height="100%">
           <Sankey
             data={data}
-            node={<Rectangle fill="#34d399" opacity={0.8} />}
-            link={{ stroke: "#aaa" }}
+            node={
+              <Rectangle 
+                fill="#8B5CF6" 
+                opacity={0.8}
+              />
+            }
+            link={{ 
+              stroke: "#4B5563",
+              strokeOpacity: 0.5,
+              fillOpacity: 0.5,
+              fill: "#6D28D9"
+            }}
             margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
             nodePadding={50}
             nodeWidth={10}
@@ -162,12 +210,19 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
             <Tooltip 
               formatter={(value: number) => formatCurrency(value)}
               labelFormatter={(name) => `${name}`}
+              contentStyle={{ 
+                backgroundColor: 'rgba(17, 24, 39, 0.95)', 
+                border: '1px solid #8B5CF6',
+                borderRadius: '4px',
+                padding: '8px',
+                color: '#E5E7EB' 
+              }}
             />
           </Sankey>
         </ResponsiveContainer>
       </div>
-      <p className="text-sm text-gray-500 mt-2">
-        Note: The chart generation function is still a work in progress...
+      <p className="text-xs text-gray-400 mt-2 italic">
+        Note: Missing values are estimated based on standard financial ratios. For accurate visualization, ensure all income statement values are properly extracted.
       </p>
     </div>
   );

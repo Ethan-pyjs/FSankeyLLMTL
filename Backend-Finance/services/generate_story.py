@@ -39,7 +39,7 @@ def generate_story_from_json(data):
         Keep the story between 250-350 words.
         """
         
-        model = "llama3.3"  # Use the more advanced model for better narrative
+        model = "llama3.3:latest"  # Use the more advanced model for better narrative
     else:
         # Limited data scenario - focus on general financial principles
         available = ", ".join(key.replace('_', ' ') for key, value in data.items() if value != "Unknown")
