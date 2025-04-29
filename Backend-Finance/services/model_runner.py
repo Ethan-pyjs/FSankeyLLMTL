@@ -14,7 +14,7 @@ def query_model(prompt: str, model: str = "mistral", temperature: float = 0.2, m
     
     Args:
         prompt: The text prompt to send to the model
-        model: Model name ("mistral", "llama3.3:latest", etc.)
+        model: Model name ("mistral", "llama3.3:", etc.)
         temperature: Controls randomness (0.0-1.0)
         max_tokens: Maximum number of tokens to generate
         
@@ -25,7 +25,7 @@ def query_model(prompt: str, model: str = "mistral", temperature: float = 0.2, m
     
     # Ensure the model name is valid
     model_name = model.lower()
-    if model_name not in ["mistral", "llama3.3:latest", "llama3.3", "llama2"]:
+    if model_name not in ["mistral", "llama3.3", "llama3", "llama2"]:
         print(f"Warning: Unknown model '{model}', defaulting to mistral")
         model_name = "mistral"
     

@@ -18,7 +18,8 @@ def clean_text_for_extraction(text):
     text = re.sub(r'\s+', ' ', text)
     # Look for common financial terms and highlight them
     financial_terms = ["revenue", "income", "expense", "profit", "loss", "cost", 
-                       "total", "net", "gross", "operating", "assets", "liabilities"]
+                       "total", "net", "gross", "operating", "assets", "liabilities",
+                       "million", "billion", "thousand", "$", "USD", "dollars"]
     
     for term in financial_terms:
         # Make the term more visible by adding spaces around it
@@ -42,7 +43,7 @@ def format_financial_value(value_str):
         elif "thousand" in value_str.lower() or "k" in value_str.lower():
             value /= 1000  # Convert to millions
             
-        return round(value, 2)
+        return value  # Return as number instead of string for better JSON serialization
     except:
         return "Unknown"
 
@@ -166,8 +167,11 @@ def extract_income_statement(pdf_bytes):
         for key, value in json_data.items():
             # Convert key to snake_case
             formatted_key = key.replace(' ', '_').replace('-', '_')
-            # Ensure value is properly formatted
-            formatted_data[formatted_key] = format_financial_value(str(value))
+            # Ensure value is properly formatted - keep as number if it's a number
+            if value != "Unknown" and not isinstance(value, (int, float)):
+                formatted_data[formatted_key] = format_financial_value(str(value))
+            else:
+                formatted_data[formatted_key] = value
             
         return formatted_data
             
