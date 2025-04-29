@@ -55,7 +55,7 @@ def generate_story_from_json(data):
         Write approximately 200-250 words in a professional but accessible style.
         """
         
-        model = "mistral"  # Use the lighter model for a more general response
+        model = "llama3.3"  # Use llama3.3 instead of mistral
     
     # Get the narrative from the AI model
     story = query_model(prompt, model=model)

@@ -88,7 +88,7 @@ def extract_income_statement(pdf_bytes):
         IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanations.
         """
         
-        response = query_model(prompt, model="mistral")
+        response = query_model(prompt, model="llama3.3")
         print(f"Raw model response (first 200 chars): {response[:200]}...")
         
         # Try to extract valid JSON from the response

@@ -8,13 +8,13 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 REQUEST_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", 60))  # seconds
 MAX_RETRIES = int(os.environ.get("OLLAMA_MAX_RETRIES", 2))
 
-def query_model(prompt: str, model: str = "mistral", temperature: float = 0.2, max_tokens: int = 2048) -> str:
+def query_model(prompt: str, model: str = "llama3.3", temperature: float = 0.2, max_tokens: int = 2048) -> str:
     """
     Query the Ollama API with improved error handling and formatting options.
     
     Args:
         prompt: The text prompt to send to the model
-        model: Model name ("mistral", "llama3.3:", etc.)
+        model: Model name ("llama3.3", "llama3.3:latest", etc.)
         temperature: Controls randomness (0.0-1.0)
         max_tokens: Maximum number of tokens to generate
         
@@ -25,9 +25,9 @@ def query_model(prompt: str, model: str = "mistral", temperature: float = 0.2, m
     
     # Ensure the model name is valid
     model_name = model.lower()
-    if model_name not in ["mistral", "llama3.3", "llama3", "llama2"]:
-        print(f"Warning: Unknown model '{model}', defaulting to mistral")
-        model_name = "mistral"
+    if model_name not in ["llama3.3", "llama3.3:latest", "llama3", "llama2"]:
+        print(f"Warning: Unknown model '{model}', defaulting to llama3.3")
+        model_name = "llama3.3"
     
     payload = {
         "model": model_name,
