@@ -39,7 +39,7 @@ def generate_story_from_json(data):
         Keep the story between 250-350 words.
         """
         
-        model = "llama3.3:latest"  # Use the more advanced model for better narrative
+        model = "llama3:latest"  # Use the more advanced model for better narrative
     else:
         # Limited data scenario - focus on general financial principles
         available = ", ".join(key.replace('_', ' ') for key, value in data.items() if value != "Unknown")
@@ -55,7 +55,7 @@ def generate_story_from_json(data):
         Write approximately 200-250 words in a professional but accessible style.
         """
         
-        model = "llama3.3"  # Use llama3.3 instead of mistral
+        model = "llama3" 
     
     # Get the narrative from the AI model
     story = query_model(prompt, model=model)

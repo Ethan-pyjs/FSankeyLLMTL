@@ -88,7 +88,7 @@ def extract_income_statement(pdf_bytes):
         IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanations.
         """
         
-        response = query_model(prompt, model="llama3.3")
+        response = query_model(prompt, model="llama3")
         print(f"Raw model response (first 200 chars): {response[:200]}...")
         
         # Try to extract valid JSON from the response
@@ -140,7 +140,7 @@ def extract_income_statement(pdf_bytes):
             {processed_text[:4000]}
             """
             
-            fallback_response = query_model(fallback_prompt, model="llama3.3")
+            fallback_response = query_model(fallback_prompt, model="llama3")
             
             # Parse the key-value pairs
             json_data = {}
