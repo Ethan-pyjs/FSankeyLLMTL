@@ -9,9 +9,11 @@ export default function App() {
       </div>
       
       {/* Main content */}
-      <div className="flex flex-col flex-1 p-4 md:p-8">
-        <h1 className="text-4xl font-bold mb-8 text-center text-white">10-K Analyzer</h1>
-        <UploadForm />
+      <div className="flex flex-col items-center justify-center flex-1 p-4 md:p-8">
+        <div className="w-full max-w-md">
+          <h1 className="text-4xl font-bold mb-8 text-center text-white">10-K Analyzer</h1>
+          <UploadForm />
+        </div>
       </div>
       
       {/* Right sidebar */}
