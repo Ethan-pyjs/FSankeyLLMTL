@@ -154,14 +154,14 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       
       console.log("Processed financial data:", financialData);
       
-      // Create Sankey nodes
+      // Create Sankey nodes - using shorter display names for better fit
       const nodes: SankeyNode[] = [
         { name: 'Revenue' },
-        { name: 'Cost of Revenue' },
+        { name: 'Cost' },
         { name: 'Gross Profit' },
-        { name: 'Operating Expenses' },
-        { name: 'Operating Income' },
-        { name: 'Taxes & Other' },
+        { name: 'Op Expenses' },
+        { name: 'Op Income' },
+        { name: 'Taxes' },
         { name: 'Net Income' }
       ];
       
@@ -283,10 +283,37 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
   // Add debug information
   console.log("Sankey data being rendered:", data);
   
-  // Custom Node component with label
+  // Custom Node component with enhanced label
   const CustomNode = (props: any) => {
     const { x, y, width, height, index, payload } = props;
-    const isLeftSide = index === 0 || index === 2 || index === 4; // Revenue, Gross Profit, Operating Income
+    
+    // Determine label position based on node position in the flow
+    // This is key to keeping labels within the chart boundaries
+    const isLeftNode = index === 0; // Revenue
+    const isRightNode = index === 6; // Net Income
+    const isCenterLeftNode = index === 2; // Gross Profit
+    const isCenterRightNode = index === 4; // Operating Income
+    
+    // Position text based on node location in flow
+    let textX, textAnchor;
+    
+    if (isLeftNode) {
+      textX = x + width + 5;
+      textAnchor = "start";
+    } else if (isRightNode) {
+      textX = x - 5;
+      textAnchor = "end";
+    } else if (isCenterLeftNode) {
+      textX = x - 5;
+      textAnchor = "end";
+    } else if (isCenterRightNode) {
+      textX = x + width + 5;
+      textAnchor = "start";
+    } else {
+      // For other nodes, place text on top of the node
+      textX = x + width/2;
+      textAnchor = "middle";
+    }
     
     return (
       <Layer>
@@ -298,14 +325,17 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           fill="#8B5CF6"
           fillOpacity={0.8}
         />
-        {/* Position the text based on which side of the diagram the node is on */}
+        {/* Enhanced label with better visibility */}
         <Text
-          x={isLeftSide ? x - 5 : x + width + 5}
-          y={y + height / 2}
-          textAnchor={isLeftSide ? "end" : "start"}
+          x={textX}
+          y={isCenterLeftNode || isCenterRightNode ? y + height / 2 : y - 10} // Move top/bottom labels above node
+          textAnchor={textAnchor as "end" | "inherit" | "start" | "middle" | undefined}
           verticalAnchor="middle"
-          fill="#E5E7EB"
-          fontSize={12}
+          fill="#FFFFFF" // Brighter white for better contrast
+          fontSize={13} // Slightly larger font
+          fontWeight="bold" // Bold text for emphasis
+          stroke="#000000" // Text outline for better readability
+          strokeWidth={0.5} // Thin outline
         >
           {payload.name}
         </Text>
@@ -328,9 +358,11 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
                 fillOpacity: 0.5,
                 fill: "#6D28D9"
               }}
-              margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
-              nodePadding={20}
-              nodeWidth={15}
+              // Improved margins to keep everything in view
+              margin={{ top: 40, right: 100, bottom: 10, left: 40 }}
+              nodePadding={25} // Increased padding between nodes
+              nodeWidth={12} // Slightly thinner nodes
+              iterations={64} // More iterations for better positioning
             >
               <Tooltip 
                 formatter={(value: any, _name: any, props: any) => {
