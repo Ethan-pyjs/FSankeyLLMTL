@@ -8,14 +8,16 @@ export default function ProjectDescription() {
       <div className="prose prose-sm text-gray-300 mb-6">
         <p className="mb-3">
           This is my school project, it plans to be a financial analysis tool that will do two things: Create a Sankey Chart and tell a story.
-          This is done by uploading a PDF file containing the financial report of a company, and the application will extract the income statement data from it. 
-          The income statement will be extracted as a JSON and will be bucketed to fit for a graph. This is all done with the power of LLMs (Large Language Models).
+          This is done by uploading a PDF file containing the financial report of a company, 
+          and the application will extract the income statement data from it. 
+          The income statement will be extracted as a JSON and will be bucketed to fit for a graph. 
+          This is all done with the power of LLMs (Large Language Models).
         </p>
         
         <p className="mb-3">
-          Upload your PDF financial report, and the application will extract income statement data, 
-          generate an interactive Sankey diagram showing cash flow, and provide an AI-powered analysis 
-          of what the numbers mean.
+          What sets this apart from other financial analysis tools is the ability to visualize the flow of money through a Sankey chart, all in one click. Well...two if
+          you're counting the upload.. But you get the point. The Sankey chart will show the flow of money from one category to another, 
+          and the AI will generate a story based on the data.
         </p>
         
         <h3 className="text-lg font-medium text-purple-200 mt-4 mb-2">Features:</h3>
