@@ -7,8 +7,9 @@ export default function ProjectDescription() {
       
       <div className="prose prose-sm text-gray-300 mb-6">
         <p className="mb-3">
-          Financial Sankey Story-Teller is a tool that transforms complex financial documents into 
-          intuitive visualizations and narratives.
+          This is my school project, it plans to be a financial analysis tool that will do two things: Create a Sankey Chart and tell a story.
+          This is done by uploading a PDF file containing the financial report of a company, and the application will extract the income statement data from it. 
+          The income statement will be extracted as a JSON and will be bucketed to fit for a graph. This is all done with the power of LLMs (Large Language Models).
         </p>
         
         <p className="mb-3">
@@ -26,7 +27,7 @@ export default function ProjectDescription() {
         </ul>
         
         <p className="text-sm text-gray-400 italic">
-          Built with React, TypeScript, Recharts, FastAPI, and powered by LLM technology.
+        Built with React, TypeScript, Recharts, FastAPI, and powered by LLM technology. Remember AI is not perfect, so always verify the insights provided.
         </p>
       </div>
       
