@@ -8,7 +8,6 @@ This project is designed to parse large financial documents into JSON files of j
 - **Middleware**: FastAPI & CORS (Cross-Origin Resource Sharing)
 - **Backend**: Python & PyMuPDF
 - **LLMS**: Granite 3.3  & 3.2-vision
-- Note for myself: Look into integrating free azure static web services or github pages + try other LLMS
 
 ## Installation
 1. Clone the repository:
