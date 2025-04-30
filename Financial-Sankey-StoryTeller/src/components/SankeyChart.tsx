@@ -3,6 +3,7 @@ import { Sankey, Tooltip, Rectangle, ResponsiveContainer, Layer, Text } from 're
 
 interface SankeyNode {
   name: string;
+  value?: number; // Add value property to store the node's value
 }
 
 interface SankeyLink {
@@ -154,15 +155,15 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       
       console.log("Processed financial data:", financialData);
       
-      // Create Sankey nodes - using shorter display names for better fit
+      // Create Sankey nodes with value property for reference
       const nodes: SankeyNode[] = [
-        { name: 'Revenue' },
-        { name: 'Cost' },
-        { name: 'Gross Profit' },
-        { name: 'Op Expenses' },
-        { name: 'Op Income' },
-        { name: 'Taxes' },
-        { name: 'Net Income' }
+        { name: 'Revenue', value: financialData.Revenue },
+        { name: 'Cost', value: financialData.Cost_of_Revenue },
+        { name: 'Gross Profit', value: financialData.Gross_Profit },
+        { name: 'Op Expenses', value: financialData.Operating_Expenses },
+        { name: 'Op Income', value: financialData.Operating_Income },
+        { name: 'Taxes', value: taxAndOther },
+        { name: 'Net Income', value: financialData.Net_Income }
       ];
       
       // Ensure all values are positive for visualization (use absolute values)
@@ -249,7 +250,21 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     }
   }, [incomeStatement]);
   
+  // Format currency values for display
   const formatCurrency = (value: number) => {
+    if (value >= 1000000000) {
+      return `$${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(1)}K`;
+    } else {
+      return `$${value.toFixed(0)}`;
+    }
+  };
+  
+  // Format currency for tooltip (more detailed)
+  const formatCurrencyDetailed = (value: number) => {
     if (value >= 1000000000) {
       return `$${(value / 1000000000).toFixed(2)} billion`;
     } else if (value >= 1000000) {
@@ -283,12 +298,17 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
   // Add debug information
   console.log("Sankey data being rendered:", data);
   
-  // Custom Node component with enhanced label
+  // Enhanced custom Node component with dollar value labels
   const CustomNode = (props: any) => {
     const { x, y, width, height, index, payload } = props;
     
+    // Get the node's value from the payload or default to 0
+    const nodeValue = payload.value || 0;
+    
+    // Format the value for display
+    const formattedValue = formatCurrency(nodeValue);
+    
     // Determine label position based on node position in the flow
-    // This is key to keeping labels within the chart boundaries
     const isLeftNode = index === 0; // Revenue
     const isRightNode = index === 6; // Net Income
     const isCenterLeftNode = index === 2; // Gross Profit
@@ -325,29 +345,44 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           fill="#8B5CF6"
           fillOpacity={0.8}
         />
-        {/* Enhanced label with better visibility */}
+        {/* Node name label */}
         <Text
           x={textX}
-          y={isCenterLeftNode || isCenterRightNode ? y + height / 2 : y - 10} // Move top/bottom labels above node
+          y={isCenterLeftNode || isCenterRightNode ? y + height / 2 - 10 : y - 10}
           textAnchor={textAnchor as "end" | "inherit" | "start" | "middle" | undefined}
           verticalAnchor="middle"
-          fill="#FFFFFF" // Brighter white for better contrast
-          fontSize={13} // Slightly larger font
-          fontWeight="bold" // Bold text for emphasis
-          stroke="#000000" // Text outline for better readability
-          strokeWidth={0.5} // Thin outline
+          fill="#FFFFFF"
+          fontSize={13}
+          fontWeight="bold"
+          stroke="#000000"
+          strokeWidth={0.5}
         >
           {payload.name}
+        </Text>
+        
+        {/* Value label - positioned below the name */}
+        <Text
+          x={textX}
+          y={isCenterLeftNode || isCenterRightNode ? y + height / 2 + 10 : y + 10}
+          textAnchor={textAnchor as "end" | "inherit" | "start" | "middle" | undefined}
+          verticalAnchor="middle"
+          fill="#E9D5FF" // Light purple for the value
+          fontSize={12}
+          fontWeight="medium"
+          stroke="#000000"
+          strokeWidth={0.3}
+        >
+          {formattedValue}
         </Text>
       </Layer>
     );
   };
 
   return (
-    <div className="w-full" style={{ height: "300px", minHeight: "240px" }}>
+    <div className="w-full" style={{ height: "350px", minHeight: "300px" }}> {/* Increased height to accommodate labels */}
       <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
         {/* Force a specific height for the container to ensure visibility */}
-        <div style={{ width: '100%', height: '250px', position: 'relative' }}>
+        <div style={{ width: '100%', height: '300px', position: 'relative' }}> {/* Increased height */}
           <ResponsiveContainer width="100%" height="100%">
             <Sankey
               data={data}
@@ -358,11 +393,11 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
                 fillOpacity: 0.5,
                 fill: "#6D28D9"
               }}
-              // Improved margins to keep everything in view
-              margin={{ top: 40, right: 100, bottom: 10, left: 40 }}
-              nodePadding={25} // Increased padding between nodes
-              nodeWidth={12} // Slightly thinner nodes
-              iterations={64} // More iterations for better positioning
+              // Improved margins to keep everything in view with the added labels
+              margin={{ top: 50, right: 100, bottom: 20, left: 50 }}
+              nodePadding={30} // Increased padding between nodes for value labels
+              nodeWidth={12}
+              iterations={64}
             >
               <Tooltip 
                 formatter={(value: any, _name: any, props: any) => {
@@ -370,7 +405,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
                   const displayValue = props.payload.absoluteValue !== undefined 
                     ? props.payload.absoluteValue 
                     : value;
-                  return formatCurrency(displayValue);
+                  return formatCurrencyDetailed(displayValue);
                 }}
                 labelFormatter={(name) => `${name}`}
                 contentStyle={{ 
