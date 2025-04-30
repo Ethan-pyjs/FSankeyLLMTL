@@ -37,5 +37,9 @@ This project is designed to parse large financial documents into JSON files of j
     ```bash
     uvicorn main:app --reload
     ```
+    OR
+    ```bash
+    python main.py
+    ```
 ## License
 This project is licensed under the [MIT License](LICENSE).
