@@ -92,8 +92,8 @@ def extract_income_statement(pdf_bytes):
         1. Your response must ONLY contain a valid JSON object WITHOUT any markdown formatting
         2. Each key must be in quotes, each value must be a number (without any currency symbols) or "Unknown" in quotes
         3. DO NOT add any explanations, notes, or text outside the JSON object
-        5. All values should be presented in millions of dollars (e.g., $1,000,000 = 1), if not then apply the conversion.
-        6. If a value is negative, represent it as a negative number like -10.5, not with parentheses
+        4. All values should be presented in millions of dollars (e.g., $1,000,000 = 1), if not then apply the conversion.
+        5. If a value is negative, represent it as a negative number like -10.5, not with parentheses
         
         KEYS TO EXTRACT:
         - "Revenue": The company's total income from sales
