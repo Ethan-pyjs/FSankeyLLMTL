@@ -352,7 +352,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           textAnchor={textAnchor as "end" | "inherit" | "start" | "middle" | undefined}
           verticalAnchor="middle"
           fill="#FFFFFF"
-          fontSize={13}
+          fontSize={14}
           fontWeight="bold"
           stroke="#000000"
           strokeWidth={0.5}
@@ -367,8 +367,9 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           textAnchor={textAnchor as "end" | "inherit" | "start" | "middle" | undefined}
           verticalAnchor="middle"
           fill="#E9D5FF" // Light purple for the value
-          fontSize={12}
-          fontWeight="medium"
+          fontSize={17}
+          fontWeight="bold"
+          fontStyle="italic"
           stroke="#000000"
           strokeWidth={0.3}
         >
@@ -395,7 +396,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
               }}
               // Improved margins to keep everything in view with the added labels
               margin={{ top: 50, right: 100, bottom: 20, left: 50 }}
-              nodePadding={30} // Increased padding between nodes for value labels
+              nodePadding={10} // Increased padding between nodes for value labels
               nodeWidth={12}
               iterations={64}
             >

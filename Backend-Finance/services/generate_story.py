@@ -3,7 +3,9 @@ from services.model_runner import query_model
 def generate_story_from_json(data):
     """
     Generate a financial narrative based on income statement data.
-    The story aims to be more insightful and contextual.
+    The story aims to be more insightful and contextual. 
+    Write enough to cover the key points and around five pages of text. 
+    Please format it so it's easy to read and understand.
     """
     # Create a more tailored prompt based on available data
     financial_metrics = []
@@ -35,8 +37,9 @@ def generate_story_from_json(data):
         4. Overall financial health assessment
         5. Potential areas of concern or strength
         
-        Write in a professional but accessible style that a business executive would appreciate.
-        Keep the story between 250-350 words.
+        Write in a professional but easy to read style that a business executive would appreciate.
+        I would prefer you write up to five pages of text, but please ensure the content is concise and relevant.
+        Avoid unnecessary jargon and keep the language accessible.
         """
         
         model = "granite3.3:8B"  # Use Granite 3.3:8B model for narrative generation

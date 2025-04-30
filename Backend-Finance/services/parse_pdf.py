@@ -92,8 +92,11 @@ def extract_income_statement(pdf_bytes):
         1. Your response must ONLY contain a valid JSON object WITHOUT any markdown formatting
         2. Each key must be in quotes, each value must be a number (without any currency symbols) or "Unknown" in quotes
         3. DO NOT add any explanations, notes, or text outside the JSON object
-        4. All values should be presented in millions of dollars (e.g., $1,000,000 = 1), if not then apply the conversion.
+        4. Any values lower than 1000 is most likely in millions or billions, use context to determine the scale. If millions, multiply by 1,000,000; if billions, multiply by 1,000,000,000.
         5. If a value is negative, represent it as a negative number like -10.5, not with parentheses
+        6. If a value is not found, use "Unknown" in quotes
+        7. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
+        8. If value is higher than 1000 no need to convert it to millions or billions, just return the number as is.
         
         KEYS TO EXTRACT:
         - "Revenue": The company's total income from sales
