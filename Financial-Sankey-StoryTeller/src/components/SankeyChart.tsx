@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sankey, Tooltip, Rectangle, ResponsiveContainer } from 'recharts';
+import { Sankey, Tooltip, Rectangle, ResponsiveContainer, Layer, Text } from 'recharts';
 
 interface SankeyNode {
   name: string;
@@ -283,6 +283,36 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
   // Add debug information
   console.log("Sankey data being rendered:", data);
   
+  // Custom Node component with label
+  const CustomNode = (props: any) => {
+    const { x, y, width, height, index, payload } = props;
+    const isLeftSide = index === 0 || index === 2 || index === 4; // Revenue, Gross Profit, Operating Income
+    
+    return (
+      <Layer>
+        <Rectangle
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill="#8B5CF6"
+          fillOpacity={0.8}
+        />
+        {/* Position the text based on which side of the diagram the node is on */}
+        <Text
+          x={isLeftSide ? x - 5 : x + width + 5}
+          y={y + height / 2}
+          textAnchor={isLeftSide ? "end" : "start"}
+          verticalAnchor="middle"
+          fill="#E5E7EB"
+          fontSize={12}
+        >
+          {payload.name}
+        </Text>
+      </Layer>
+    );
+  };
+
   return (
     <div className="w-full" style={{ height: "300px", minHeight: "240px" }}>
       <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
@@ -291,19 +321,14 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <Sankey
               data={data}
-              node={
-                <Rectangle 
-                  fill="#8B5CF6" 
-                  opacity={0.8}
-                />
-              }
+              node={<CustomNode />}
               link={{ 
                 stroke: "#4B5563",
                 strokeOpacity: 0.5,
                 fillOpacity: 0.5,
                 fill: "#6D28D9"
               }}
-              margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
               nodePadding={20}
               nodeWidth={15}
             >
