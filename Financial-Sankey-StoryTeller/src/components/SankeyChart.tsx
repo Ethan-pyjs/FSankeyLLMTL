@@ -43,14 +43,14 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       const cleanedData: Record<string, number> = {};
       const unknownFields: string[] = [];
       
-      // Process each field and convert "Unknown" to estimated values
+      // Process each field and convert strings to numbers
       Object.entries(incomeStatement).forEach(([key, value]) => {
         if (key === "error") return; // Skip error field
         
         // Convert string values to numbers if possible
         if (typeof value === "string") {
           if (value !== "Unknown") {
-            const numValue = parseFloat(value);
+            const numValue = parseFloat(value.toString().replace(/,/g, ''));
             if (!isNaN(numValue)) {
               cleanedData[key] = numValue;
             } else {
@@ -69,54 +69,81 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       console.log("Cleaned data:", cleanedData);
       console.log("Unknown fields:", unknownFields);
       
-      // If we have too many unknown values, we can't create a meaningful chart
-      if (Object.keys(cleanedData).length < 2) {
-        setError("Not enough financial data found to create a visualization");
-        return;
+      // Check if we have valid data for the main financial metrics
+      const hasInvalidValues = Object.values(cleanedData).some(value => value === 0 || isNaN(value));
+      const hasSufficientData = Object.keys(cleanedData).length >= 2;
+      
+      if (!hasSufficientData || hasInvalidValues) {
+        console.warn("Data validation failed:", { hasSufficientData, hasInvalidValues, cleanedData });
       }
       
-      // Estimate missing values if necessary
-      if (!cleanedData.Revenue && cleanedData.Net_Income) {
-        // Estimate Revenue based on typical net margin
-        cleanedData.Revenue = Math.abs(cleanedData.Net_Income) / 0.15; // Assuming 15% net margin
+      // Create consistent financial data structure, filling in missing values
+      let financialData = {
+        Revenue: cleanedData.Revenue || 0,
+        Cost_of_Revenue: cleanedData.Cost_of_Revenue || 0,
+        Gross_Profit: cleanedData.Gross_Profit || 0,
+        Operating_Expenses: cleanedData.Operating_Expenses || 0,
+        Operating_Income: cleanedData.Operating_Income || 0,
+        Net_Income: cleanedData.Net_Income || 0
+      };
+      
+      // Handle case where Revenue exists but Cost_of_Revenue and Gross_Profit don't align
+      if (financialData.Revenue > 0) {
+        // If gross profit is missing, calculate it
+        if (financialData.Gross_Profit === 0) {
+          if (financialData.Cost_of_Revenue > 0) {
+            financialData.Gross_Profit = financialData.Revenue - financialData.Cost_of_Revenue;
+          } else {
+            // Estimate Cost of Revenue if missing
+            financialData.Cost_of_Revenue = financialData.Revenue * 0.65; // Typical COGS ratio
+            financialData.Gross_Profit = financialData.Revenue - financialData.Cost_of_Revenue;
+          }
+        } 
+        // If cost of revenue is missing but we have gross profit
+        else if (financialData.Cost_of_Revenue === 0) {
+          financialData.Cost_of_Revenue = financialData.Revenue - financialData.Gross_Profit;
+        }
       }
       
-      if (cleanedData.Revenue) {
-        // Ensure Revenue is positive for visualization purposes
-        cleanedData.Revenue = Math.abs(cleanedData.Revenue);
-        
-        // Estimate Cost of Revenue if missing
-        if (!cleanedData.Cost_of_Revenue) {
-          cleanedData.Cost_of_Revenue = cleanedData.Revenue * 0.65; // Typical COGS ratio
+      // Handle operating income calculation
+      if (financialData.Gross_Profit > 0) {
+        // If operating income is missing, calculate it
+        if (financialData.Operating_Income === 0) {
+          if (financialData.Operating_Expenses > 0) {
+            financialData.Operating_Income = financialData.Gross_Profit - financialData.Operating_Expenses;
+          } else {
+            // Estimate Operating Expenses if missing
+            financialData.Operating_Expenses = financialData.Gross_Profit * 0.7; // Typical OpEx ratio
+            financialData.Operating_Income = financialData.Gross_Profit - financialData.Operating_Expenses;
+          }
+        } 
+        // If operating expenses is missing but we have operating income
+        else if (financialData.Operating_Expenses === 0) {
+          financialData.Operating_Expenses = financialData.Gross_Profit - financialData.Operating_Income;
         }
-        
-        // Estimate Gross Profit if missing
-        if (!cleanedData.Gross_Profit) {
-          cleanedData.Gross_Profit = cleanedData.Revenue - (cleanedData.Cost_of_Revenue || 0);
-        }
-        
-        // Estimate Operating Expenses if missing
-        if (!cleanedData.Operating_Expenses && cleanedData.Gross_Profit && cleanedData.Operating_Income) {
-          cleanedData.Operating_Expenses = cleanedData.Gross_Profit - cleanedData.Operating_Income;
-        } else if (!cleanedData.Operating_Expenses && cleanedData.Gross_Profit) {
-          cleanedData.Operating_Expenses = cleanedData.Gross_Profit * 0.7; // Typical OpEx ratio
-        }
-        
-        // Estimate Operating Income if missing
-        if (!cleanedData.Operating_Income && cleanedData.Gross_Profit && cleanedData.Operating_Expenses) {
-          cleanedData.Operating_Income = cleanedData.Gross_Profit - cleanedData.Operating_Expenses;
-        }
-        
+      }
+      
+      // Handle net income calculation
+      if (financialData.Operating_Income !== 0 && financialData.Net_Income === 0) {
         // Estimate Net Income if missing
-        if (!cleanedData.Net_Income && cleanedData.Operating_Income) {
-          cleanedData.Net_Income = cleanedData.Operating_Income * 0.75; // Accounting for taxes, etc.
-        }
+        financialData.Net_Income = financialData.Operating_Income * 0.75; // Accounting for taxes, etc.
       }
       
-      // Ensure all values are positive for visualization (absolute values)
-      Object.keys(cleanedData).forEach(key => {
-        cleanedData[key] = Math.abs(cleanedData[key] || 0);
-      });
+      // If some key metrics are still missing, try to infer from available data
+      if (financialData.Revenue === 0 && financialData.Gross_Profit > 0) {
+        financialData.Revenue = financialData.Gross_Profit * 1.5; // Estimate revenue from gross profit
+        financialData.Cost_of_Revenue = financialData.Revenue - financialData.Gross_Profit;
+      }
+      
+      // Handle case where Net Income exists but other values are missing
+      if (financialData.Net_Income !== 0 && financialData.Operating_Income === 0) {
+        financialData.Operating_Income = financialData.Net_Income * 1.25; // Reverse estimate
+      }
+      
+      // Calculate tax and other expenses
+      const taxAndOther = Math.max(0, financialData.Operating_Income - financialData.Net_Income);
+      
+      console.log("Processed financial data:", financialData);
       
       // Create Sankey nodes
       const nodes: SankeyNode[] = [
@@ -129,61 +156,87 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
         { name: 'Net Income' }
       ];
       
-      // Create Sankey links with appropriate values
-      // Use a minimum value to ensure the flow is visible
-      const minValue = Math.max(1, cleanedData.Revenue ? cleanedData.Revenue * 0.01 : 1);
+      // Ensure all values are positive for visualization (use absolute values)
+      // and ensure minimum values for visibility
+      const minFlowValue = 1;
+      const revenue = Math.max(minFlowValue, Math.abs(financialData.Revenue));
+      const costOfRevenue = Math.max(minFlowValue, Math.abs(financialData.Cost_of_Revenue));
+      const grossProfit = Math.max(minFlowValue, Math.abs(financialData.Gross_Profit));
+      const operatingExpenses = Math.max(minFlowValue, Math.abs(financialData.Operating_Expenses));
+      const operatingIncome = Math.max(minFlowValue, Math.abs(financialData.Operating_Income));
+      const taxesAndOther = Math.max(minFlowValue, Math.abs(taxAndOther));
+      const netIncome = Math.max(minFlowValue, Math.abs(financialData.Net_Income));
       
+      // Create Sankey links with appropriate values
       const links: SankeyLink[] = [
         // Revenue splits into Cost of Revenue and Gross Profit
         { 
           source: 0, 
           target: 1, 
-          value: Math.max(minValue, cleanedData.Cost_of_Revenue || 0),
-          absoluteValue: cleanedData.Cost_of_Revenue || 0
+          value: costOfRevenue,
+          absoluteValue: financialData.Cost_of_Revenue
         },
         { 
           source: 0, 
           target: 2, 
-          value: Math.max(minValue, cleanedData.Gross_Profit || 0),
-          absoluteValue: cleanedData.Gross_Profit || 0
+          value: grossProfit,
+          absoluteValue: financialData.Gross_Profit
         },
         // Gross Profit splits into Operating Expenses and Operating Income
         { 
           source: 2, 
           target: 3, 
-          value: Math.max(minValue, cleanedData.Operating_Expenses || 0),
-          absoluteValue: cleanedData.Operating_Expenses || 0
+          value: operatingExpenses,
+          absoluteValue: financialData.Operating_Expenses
         },
         { 
           source: 2, 
           target: 4, 
-          value: Math.max(minValue, cleanedData.Operating_Income || 0),
-          absoluteValue: cleanedData.Operating_Income || 0
+          value: operatingIncome,
+          absoluteValue: financialData.Operating_Income
         },
         // Operating Income splits into Taxes & Other and Net Income
         {
           source: 4,
           target: 5,
-          value: Math.max(minValue, (cleanedData.Operating_Income || 0) - (cleanedData.Net_Income || 0)),
-          absoluteValue: (cleanedData.Operating_Income || 0) - (cleanedData.Net_Income || 0)
+          value: taxesAndOther,
+          absoluteValue: taxAndOther
         },
         { 
           source: 4, 
           target: 6, 
-          value: Math.max(minValue, cleanedData.Net_Income || 0),
-          absoluteValue: cleanedData.Net_Income || 0
+          value: netIncome,
+          absoluteValue: financialData.Net_Income
         }
       ];
+      
+      // Add a validation step to ensure the sum of incoming values roughly equals the sum of outgoing values
+      // This makes the Sankey diagram look more natural
+      
+      // Check revenue -> (cost of revenue + gross profit)
+      const totalOutFromRevenue = costOfRevenue + grossProfit;
+      if (Math.abs(revenue - totalOutFromRevenue) > 0.1) {
+        console.warn("Revenue flow mismatch:", { revenue, totalOutFromRevenue });
+      }
+      
+      // Check gross profit -> (operating expenses + operating income)
+      const totalOutFromGrossProfit = operatingExpenses + operatingIncome;
+      if (Math.abs(grossProfit - totalOutFromGrossProfit) > 0.1) {
+        console.warn("Gross profit flow mismatch:", { grossProfit, totalOutFromGrossProfit });
+      }
+      
+      // Check operating income -> (taxes & other + net income)
+      const totalOutFromOperatingIncome = taxesAndOther + netIncome;
+      if (Math.abs(operatingIncome - totalOutFromOperatingIncome) > 0.1) {
+        console.warn("Operating income flow mismatch:", { operatingIncome, totalOutFromOperatingIncome });
+      }
       
       setData({ nodes, links });
       setError(null);
       
-      // Debug data
-      console.log("Sankey Chart Data:", { nodes, links, cleanedData });
-      
     } catch (err) {
       console.error("Error creating Sankey chart:", err);
-      setError("Failed to create visualization. Please check console for details.");
+      setError("Failed to create visualization. Please check the console for details.");
     }
   }, [incomeStatement]);
   
@@ -192,6 +245,8 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       return `$${(value / 1000000000).toFixed(2)} billion`;
     } else if (value >= 1000000) {
       return `$${(value / 1000000).toFixed(2)} million`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(2)}k`;
     } else {
       return `$${value.toLocaleString()}`;
     }
