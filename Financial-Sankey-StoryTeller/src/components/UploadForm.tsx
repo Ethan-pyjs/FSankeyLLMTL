@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import SankeyChart from './SankeyChart'
+import FinancialStory from './FinancialStory'
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
@@ -124,7 +125,7 @@ export default function UploadForm() {
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Analysis:</h2>
                 <div className="bg-black bg-opacity-30 p-4 rounded overflow-y-auto max-h-80 text-gray-200 text-left">
-                  {response.story}
+                  <FinancialStory story={response.story} />
                 </div>
                 <p className="text-xs text-gray-400 mt-2 italic text-right">
                   Processing time: {response.processing_time || "N/A"}
