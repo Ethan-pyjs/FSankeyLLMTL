@@ -92,8 +92,7 @@ def extract_income_statement(pdf_bytes):
         1. Your response must ONLY contain a valid JSON object WITHOUT any markdown formatting
         2. Each key must be in quotes, each value must be a number (without any currency symbols) or "Unknown" in quotes
         3. DO NOT add any explanations, notes, or text outside the JSON object
-        4. DO NOT format numbers with commas or currency symbols in the JSON
-        5. All values should be presented in millions of dollars (e.g., $1,000,000 = 1)
+        5. All values should be presented in millions of dollars (e.g., $1,000,000 = 1), if not then apply the conversion.
         6. If a value is negative, represent it as a negative number like -10.5, not with parentheses
         
         KEYS TO EXTRACT:
@@ -103,26 +102,17 @@ def extract_income_statement(pdf_bytes):
         - "Operating_Expenses": Expenses related to normal business operations
         - "Operating_Income": Gross Profit minus Operating Expenses
         - "Net_Income": Final profit after all expenses, taxes, interest
+        - ANy other relevant financial metrics you can identify
         
         FINANCIAL DOCUMENT TEXT:
         \"\"\"
         {processed_text[:4000]}
         \"\"\"
         
-        RESPONSE (ONLY VALID JSON):
-        {{
-          "Revenue": 1000,
-          "Cost_of_Revenue": 600,
-          "Gross_Profit": 400,
-          "Operating_Expenses": 200,
-          "Operating_Income": 200,
-          "Net_Income": 150
-        }}
-        
         IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanations.
         """
         
-        response = query_model(prompt, model="llama3")
+        response = query_model(prompt, model="granite3.2-vision")
         print(f"Raw model response (first 200 chars): {response[:200]}...")
         
         # Try to extract valid JSON from the response
@@ -174,7 +164,7 @@ def extract_income_statement(pdf_bytes):
             {processed_text[:4000]}
             """
             
-            fallback_response = query_model(fallback_prompt, model="llama3")
+            fallback_response = query_model(fallback_prompt, model="granite3.2-vision")
             
             # Parse the key-value pairs
             json_data = {}

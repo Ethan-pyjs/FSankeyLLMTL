@@ -86,26 +86,55 @@ async def process_pdf(file_content: bytes = Depends(validate_file)):
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
-    # Check if ollama service is available
+    # Check if ollama service is available and if the Granite models are loaded
     try:
         import requests
         response = requests.get("http://localhost:11434/api/tags", timeout=2)
-        models_available = response.status_code == 200
-    except:
-        models_available = False
+        models_data = response.json() if response.status_code == 200 else {}
+        
+        # Check if Granite models are available
+        available_models = [model["name"] for model in models_data.get("models", [])]
+        granite_vision_available = any("granite3.2-vision" in model.lower() for model in available_models)
+        granite_8b_available = any("granite3.3:8b" in model.lower() for model in available_models)
+        
+        if not (granite_vision_available and granite_8b_available) and response.status_code == 200:
+            missing_models = []
+            if not granite_vision_available:
+                missing_models.append("granite3.2-vision")
+            if not granite_8b_available:
+                missing_models.append("granite3.3:8B")
+                
+            return {
+                "status": "warning",
+                "timestamp": time.time(),
+                "models_available": True,
+                "granite_models_available": False,
+                "message": f"Ollama is running but some Granite models are not installed. Run 'ollama pull {' and '.join(missing_models)}'"
+            }
+        
+        return {
+            "status": "ok",
+            "timestamp": time.time(),
+            "models_available": response.status_code == 200,
+            "granite_vision_available": granite_vision_available,
+            "granite_8b_available": granite_8b_available,
+            "available_models": available_models
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "timestamp": time.time(),
+            "models_available": False,
+            "granite_models_available": False,
+            "message": f"Could not connect to Ollama service: {str(e)}"
+        }
     
-    return {
-        "status": "ok",
-        "timestamp": time.time(),
-        "models_available": models_available
-    }
-
 # Documentation route
 @app.get("/")
 async def root():
     """API documentation entry point."""
     return {
-        "message": "Financial Document Analyzer API",
+        "message": "Financial Document Analyzer API (using Granite models)",
         "docs": "/docs",
         "health": "/health"
     }

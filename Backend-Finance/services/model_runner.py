@@ -8,13 +8,13 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 REQUEST_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", 60))  # seconds
 MAX_RETRIES = int(os.environ.get("OLLAMA_MAX_RETRIES", 2))
 
-def query_model(prompt: str, model: str = "llama3", temperature: float = 0.2, max_tokens: int = 2048) -> str:
+def query_model(prompt: str, model: str = "granite3.2-vision", temperature: float = 0.2, max_tokens: int = 2048) -> str:
     """
-    Query the Ollama API with improved error handling and formatting options.
+    Query the Ollama API with Granite models.
     
     Args:
         prompt: The text prompt to send to the model
-        model: Model name ("llama3", "llama3:latest", etc.)
+        model: Model name ("granite3.2-vision", "granite3.3:8B", etc.)
         temperature: Controls randomness (0.0-1.0)
         max_tokens: Maximum number of tokens to generate
         
@@ -25,9 +25,9 @@ def query_model(prompt: str, model: str = "llama3", temperature: float = 0.2, ma
     
     # Ensure the model name is valid and use proper Ollama naming conventions
     model_name = model.lower()
-    if not any(name in model_name for name in ["llama3", "llama2"]):
-        print(f"Warning: Unknown model '{model}', defaulting to llama3")
-        model_name = "llama3"
+    if not any(name in model_name for name in ["granite"]):
+        print(f"Warning: Unknown model '{model}', defaulting to granite3.2-vision")
+        model_name = "granite3.2-vision"
     
     payload = {
         "model": model_name,
