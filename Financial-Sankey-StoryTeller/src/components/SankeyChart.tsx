@@ -35,7 +35,10 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
 
   useEffect(() => {
     try {
-      if (!incomeStatement) return;
+      if (!incomeStatement) {
+        console.log("No income statement data provided");
+        return;
+      }
       
       console.log("Processing income statement data:", incomeStatement);
       
@@ -47,10 +50,16 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       Object.entries(incomeStatement).forEach(([key, value]) => {
         if (key === "error") return; // Skip error field
         
+        // Debug the type and value
+        console.log(`Processing field ${key}: ${value} (${typeof value})`);
+        
         // Convert string values to numbers if possible
         if (typeof value === "string") {
           if (value !== "Unknown") {
-            const numValue = parseFloat(value.toString().replace(/,/g, ''));
+            // Remove commas and any non-numeric characters except decimal point and negative sign
+            const cleanStr = value.toString().replace(/[^\d.-]/g, '');
+            const numValue = parseFloat(cleanStr);
+            console.log(`Converting string '${value}' to number: ${numValue}`);
             if (!isNaN(numValue)) {
               cleanedData[key] = numValue;
             } else {
@@ -271,47 +280,53 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     );
   }
 
+  // Add debug information
+  console.log("Sankey data being rendered:", data);
+  
   return (
-    <div className="w-full h-96">
+    <div className="w-full" style={{ height: "300px", minHeight: "240px" }}>
       <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
-        <ResponsiveContainer width="100%" height="100%">
-          <Sankey
-            data={data}
-            node={
-              <Rectangle 
-                fill="#8B5CF6" 
-                opacity={0.8}
+        {/* Force a specific height for the container to ensure visibility */}
+        <div style={{ width: '100%', height: '250px', position: 'relative' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <Sankey
+              data={data}
+              node={
+                <Rectangle 
+                  fill="#8B5CF6" 
+                  opacity={0.8}
+                />
+              }
+              link={{ 
+                stroke: "#4B5563",
+                strokeOpacity: 0.5,
+                fillOpacity: 0.5,
+                fill: "#6D28D9"
+              }}
+              margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              nodePadding={20}
+              nodeWidth={15}
+            >
+              <Tooltip 
+                formatter={(value: any, _name: any, props: any) => {
+                  // Use the absoluteValue if available for better display
+                  const displayValue = props.payload.absoluteValue !== undefined 
+                    ? props.payload.absoluteValue 
+                    : value;
+                  return formatCurrency(displayValue);
+                }}
+                labelFormatter={(name) => `${name}`}
+                contentStyle={{ 
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)', 
+                  border: '1px solid #8B5CF6',
+                  borderRadius: '4px',
+                  padding: '8px',
+                  color: '#E5E7EB' 
+                }}
               />
-            }
-            link={{ 
-              stroke: "#4B5563",
-              strokeOpacity: 0.5,
-              fillOpacity: 0.5,
-              fill: "#6D28D9"
-            }}
-            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-            nodePadding={30}
-            nodeWidth={20}
-          >
-            <Tooltip 
-              formatter={(value: any, _name: any, props: any) => {
-                // Use the absoluteValue if available for better display
-                const displayValue = props.payload.absoluteValue !== undefined 
-                  ? props.payload.absoluteValue 
-                  : value;
-                return formatCurrency(displayValue);
-              }}
-              labelFormatter={(name) => `${name}`}
-              contentStyle={{ 
-                backgroundColor: 'rgba(17, 24, 39, 0.95)', 
-                border: '1px solid #8B5CF6',
-                borderRadius: '4px',
-                padding: '8px',
-                color: '#E5E7EB' 
-              }}
-            />
-          </Sankey>
-        </ResponsiveContainer>
+            </Sankey>
+          </ResponsiveContainer>
+        </div>
       </div>
       <p className="text-xs text-gray-400 mt-2 italic">
         Note: Missing values are estimated based on standard financial ratios. For accurate visualization, ensure all income statement values are properly extracted.

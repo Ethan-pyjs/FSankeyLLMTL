@@ -8,7 +8,6 @@ export default function UploadForm() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -40,6 +39,23 @@ export default function UploadForm() {
     formData.append('file', file)
 
     try {
+      // For demo/testing purposes, you can simulate a response without a backend
+      // Remove this mock code and uncomment the fetch code for production use
+      const mockResponse = {
+        income_statement: {
+          "Revenue": 482,
+          "Cost_of_Revenue": 0,
+          "Gross_Profit": 844,
+          "Operating_Expenses": 3.282,
+          "Operating_Income": -202,
+          "Net_Income": -202
+        },
+        story: "As we dive into the financial performance of NRG Energy, Inc., it's clear that revenue is the driving force behind their success. With a whopping $482 million in sales, this company is undoubtedly a major player in its industry. The question is, what's behind these impressive numbers? A closer look at the cost structure reveals some interesting insights. With a zero-cost-of-revenue figure, it's clear that NRG Energy has managed to keep costs under control, allowing them to maximize their gross profit. In fact, their $844 million in gross profit is a significant contributor to their overall financial performance. However, when we examine the operating expenses, the picture becomes less rosy. With a staggering $3.28 million in expenses, it's clear that NRG Energy has some work to do in terms of operational efficiency. This is reflected in their operating income, which comes in at a disappointing -$202 million. The net income story is equally concerning, with a loss of -$202 million. While this may seem alarming, it's essential to consider the context. With such high revenue and gross profit figures, it's possible that NRG Energy is simply investing heavily in growth initiatives or weathering market fluctuations. Despite these challenges, there are some areas of strength worth noting. The company's ability to keep costs low and generate significant gross profit suggests a strong operational foundation. Additionally, their impressive revenue performance indicates a solid market position. In conclusion, while NRG Energy faces some financial headwinds, it's clear that they have the potential for long-term success. By addressing their operating expenses and optimizing their cost structure, this company can unlock its full potential and drive growth.",
+        processing_time: "11.95 seconds"
+      };
+      setResponse(mockResponse);
+      
+      /* Uncomment this code for production use with a real backend
       const res = await fetch(`${API_URL}/api/process`, {
         method: 'POST',
         body: formData,
@@ -58,6 +74,8 @@ export default function UploadForm() {
       } else {
         throw new Error("No valid income statement data returned")
       }
+      */
+      
     } catch (error) {
       console.error("Error during upload:", error)
       setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
@@ -121,7 +139,9 @@ export default function UploadForm() {
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Flow Visualization:</h2>
-                <SankeyChart incomeStatement={response.income_statement} />
+                <div className="sankey-container" style={{ minHeight: "250px" }}>
+                  <SankeyChart incomeStatement={response.income_statement} />
+                </div>
               </div>
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
