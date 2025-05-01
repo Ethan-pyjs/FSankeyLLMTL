@@ -13,50 +13,76 @@ def extract_text_from_pdf(pdf_bytes):
     return text
 
 def detect_scale_notation(text):
-    """
-    Detect if the document specifies financial values in millions, billions, or thousands.
-    Returns a multiplication factor to use when converting values.
-    """
-    # Look for scale indicators commonly used in financial statements
+    """Enhanced scale detection that looks for more variations of scale indicators."""
+    text = text.lower()
+    
+    # Expanded patterns for better detection
     million_patterns = [
-        r'\(in millions\)', r'\(in millions of', r'\(millions\)',
-        r'expressed in millions', r'amounts in millions',
-        r'in millions of dollars', r'presented in millions'
+        r'\(in millions\)', r'\(millions\)', r'\(in mm\)', r'presented in millions',
+        r'amounts in millions', r'\$.*mm', r'\(mm\)', r'figures? in millions',
+        r'expressed in millions', r'reported in millions'
     ]
     
     billion_patterns = [
-        r'\(in billions\)', r'\(in billions of', r'\(billions\)',
-        r'expressed in billions', r'amounts in billions',
-        r'in billions of dollars', r'presented in billions'
+        r'\(in billions\)', r'\(billions\)', r'\(in bb\)', r'presented in billions',
+        r'amounts in billions', r'\$.*bb', r'\(bb\)', r'figures? in billions',
+        r'expressed in billions', r'reported in billions'
     ]
     
     thousand_patterns = [
-        r'\(in thousands\)', r'\(in thousands of', r'\(thousands\)',
-        r'expressed in thousands', r'amounts in thousands',
-        r'in thousands of dollars', r'presented in thousands'
+        r'\(in thousands\)', r'\(thousands\)', r'\(in k\)', r'presented in thousands',
+        r'amounts in thousands', r'\$.*k', r'\(k\)', r'figures? in thousands',
+        r'expressed in thousands', r'reported in thousands'
     ]
     
-    # Check for millions notation first (most common)
-    for pattern in million_patterns:
-        if re.search(pattern, text, re.IGNORECASE):
-            print("Detected 'in millions' notation")
-            return 1000000  # Multiply by 1 million
+    print("Checking for scale notation in text...")
     
-    # Check for billions notation
+    # Check for billions first (to avoid misinterpreting "millions" in a document using billions)
     for pattern in billion_patterns:
         if re.search(pattern, text, re.IGNORECASE):
-            print("Detected 'in billions' notation")
-            return 1000000000  # Multiply by 1 billion
+            print("Detected billions notation")
+            return 1000000000
     
-    # Check for thousands notation
+    # Then check millions
+    for pattern in million_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            print("Detected millions notation")
+            return 1000000
+    
+    # Finally check thousands
     for pattern in thousand_patterns:
         if re.search(pattern, text, re.IGNORECASE):
-            print("Detected 'in thousands' notation")
-            return 1000  # Multiply by 1 thousand
+            print("Detected thousands notation")
+            return 1000
     
-    # Default assumption if no scale notation is found
-    print("No scale notation detected, assuming raw values")
-    return 1  # Don't multiply
+    # Additional check for common headers with scales
+    header_check = text[:1000]  # Check first 1000 characters for headers
+    if re.search(r'(million|mm).*\$|^\$.*mm', header_check, re.IGNORECASE):
+        print("Detected millions notation from header")
+        return 1000000
+    elif re.search(r'(billion|bb).*\$|^\$.*bb', header_check, re.IGNORECASE):
+        print("Detected billions notation from header")
+        return 1000000000
+    
+    print("No scale notation detected, checking for value patterns...")
+    # If no explicit notation, try to infer from the values themselves
+    numbers = re.findall(r'\$?[\d,]+\.?\d*\s*[mbk]?', text.lower())
+    if numbers:
+        has_m = any('m' in n.lower() for n in numbers)
+        has_b = any('b' in n.lower() for n in numbers)
+        has_k = any('k' in n.lower() for n in numbers)
+        if has_b:
+            print("Inferred billions from values")
+            return 1000000000
+        elif has_m:
+            print("Inferred millions from values")
+            return 1000000
+        elif has_k:
+            print("Inferred thousands from values")
+            return 1000
+    
+    print("Using default scale (raw values)")
+    return 1
 
 def clean_text_for_extraction(text):
     """Preprocess text to better identify financial data with improved financial marker detection."""
@@ -89,46 +115,50 @@ def clean_text_for_extraction(text):
     return text
 
 def format_financial_value(value_str, scale_factor=1):
-    """
-    Convert a string financial value to a numeric format.
-    """
+    """Enhanced financial value formatting with better scale detection."""
     if not value_str or value_str == "Unknown":
         return "Unknown"
-        
+    
     try:
-        # If already a number, return it directly without scaling
+        # If already a number, apply scale factor directly
         if isinstance(value_str, (int, float)):
-            return value_str  # Don't apply scale factor to already processed numbers
-            
-        # Handle parentheses notation for negative numbers: (123.45) → -123.45
-        original_str = str(value_str).lower()
-        if '(' in original_str and ')' in original_str:
-            value_str = '-' + re.sub(r'[()]', '', value_str)
+            return value_str * scale_factor
         
-        # Remove any non-numeric characters except decimal points and negative signs
-        clean_val = re.sub(r'[^\d.-]', '', value_str)
+        # Convert string to lowercase for easier pattern matching
+        original_str = str(value_str).lower().strip()
         
-        if not clean_val:
+        # Handle parentheses notation for negative numbers
+        is_negative = '(' in original_str and ')' in original_str
+        clean_str = re.sub(r'[(),]', '', original_str)
+        
+        # Extract the numeric part and any scale indicators
+        match = re.search(r'([\d.]+)\s*([mbk])?', clean_str)
+        if not match:
             return "Unknown"
-            
-        value = float(clean_val)
         
-        # Check for inline scale indicators FIRST
-        if "billion" in original_str or "b" in original_str.split():
+        value = float(match.group(1))
+        scale_indicator = match.group(2) if match.group(2) else ''
+        
+        # Apply scale based on indicator in the value itself
+        if scale_indicator == 'b':
             value *= 1000000000
-        elif "million" in original_str or "m" in original_str.split():
+        elif scale_indicator == 'm':
             value *= 1000000
-        elif "thousand" in original_str or "k" in original_str.split():
+        elif scale_indicator == 'k':
             value *= 1000
         else:
-            # Only apply document-level scale factor if no inline indicator was found
+            # If no scale indicator in the value, apply the document-level scale factor
             value *= scale_factor
-            
-        # Convert to integer if it's a whole number
-        if value == int(value):
-            return int(value)
-        return round(value, 2)
-    except:
+        
+        # Apply negative if indicated by parentheses
+        if is_negative:
+            value = -value
+        
+        # Return as integer if whole number, otherwise round to 2 decimal places
+        return int(value) if value.is_integer() else round(value, 2)
+        
+    except Exception as e:
+        print(f"Error formatting value '{value_str}': {str(e)}")
         return "Unknown"
 
 def extract_income_statement(pdf_bytes):
@@ -296,10 +326,11 @@ def extract_income_statement(pdf_bytes):
         # Add visualization data to the response
         formatted_data["visualization_data"] = visualization_data
         
-        # Before returning the formatted data, log the values
+        # Before returning formatted_data, log the values
+        print("\nFinal processed values:")
         for key, value in formatted_data.items():
             if key != "visualization_data":
-                print(f"Final {key}: {value}")
+                print(f"{key}: {value:,}")
                 
         return formatted_data
             
