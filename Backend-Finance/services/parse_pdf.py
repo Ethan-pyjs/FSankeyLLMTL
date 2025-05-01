@@ -89,23 +89,15 @@ def clean_text_for_extraction(text):
     # Remove multiple spaces and normalize newlines
     text = re.sub(r'\s+', ' ', text)
     
-    # Look for common financial terms and highlight them
+    # Simplified list of core financial terms
     financial_terms = [
-        "revenue", "income", "expense", "profit", "loss", "cost", 
-        "total", "net", "gross", "operating", "assets", "liabilities",
-        "million", "billion", "thousand", "$", "USD", "dollars",
-        # Additional terms to improve recognition
-        "consolidated", "statement", "fiscal year", "quarter", 
-        "ended", "financial", "cash flow", "balance sheet", "net income", "operating income",
-        "cost of goods sold", "cogs", "operating expenses", "oe",
-        "net profit", "gross profit", "earnings before interest and taxes",
-        "ebit", "earnings before interest taxes depreciation and amortization",
-        "ebitda", "earnings per share", "eps", "dividend", "shareholder",
-        "equity", "debt", "interest", "taxes", "net margin", "operating margin",
-        "return on equity", "roe", "return on assets", "roa", "return on investment",
-        "roi", "working capital", "current assets", "current liabilities",
-        "accounts receivable", "accounts payable", "inventory", "fixed assets",
-        "net cash flow", "operating cash flow", "investing cash flow",
+        "revenue", "total revenue", "sales",
+        "cost of revenue", "cost of goods sold", "cogs",
+        "gross profit", "gross margin",
+        "operating expenses", "total operating expenses",
+        "operating income", "operating profit",
+        "net income", "net profit", "net earnings",
+        "million", "billion", "thousand", "$", "USD"
     ]
     
     for term in financial_terms:
@@ -115,47 +107,66 @@ def clean_text_for_extraction(text):
     return text
 
 def format_financial_value(value_str, scale_factor=1):
-    """Enhanced financial value formatting with better scale detection."""
     if not value_str or value_str == "Unknown":
         return "Unknown"
     
     try:
-        # If already a number, apply scale factor directly
+        # If already a number, check if it needs scaling
         if isinstance(value_str, (int, float)):
-            return value_str * scale_factor
-        
+            print(f"Processing numeric value: {value_str} with scale factor: {scale_factor}")
+            # New logic: Check if the value appears unscaled based on context
+            if scale_factor > 1 and abs(value_str) < 1000000:  # If scale factor indicates millions/billions
+                value = value_str * scale_factor
+                print(f"Scaled numeric value: {value}")
+                return value
+            return value_str
+            
         # Convert string to lowercase for easier pattern matching
         original_str = str(value_str).lower().strip()
+        print(f"Processing string value: '{original_str}'")
         
         # Handle parentheses notation for negative numbers
         is_negative = '(' in original_str and ')' in original_str
         clean_str = re.sub(r'[(),]', '', original_str)
         
+        # Remove any currency symbols and commas
+        clean_str = re.sub(r'[$,]', '', clean_str)
+        
         # Extract the numeric part and any scale indicators
         match = re.search(r'([\d.]+)\s*([mbk])?', clean_str)
         if not match:
+            print(f"No numeric value found in: {clean_str}")
             return "Unknown"
         
         value = float(match.group(1))
-        scale_indicator = match.group(2) if match.group(2) else ''
+        scale_indicator = match.group(2).lower() if match.group(2) else ''
         
-        # Apply scale based on indicator in the value itself
-        if scale_indicator == 'b':
-            value *= 1000000000
-        elif scale_indicator == 'm':
-            value *= 1000000
-        elif scale_indicator == 'k':
-            value *= 1000
+        print(f"Extracted value: {value}, scale indicator: {scale_indicator}")
+        
+        # Only apply ONE scale factor - either from the value itself OR the document level
+        if scale_indicator:
+            # Use inline scale indicator
+            if scale_indicator == 'b':
+                value *= 1000000000
+            elif scale_indicator == 'm':
+                value *= 1000000
+            elif scale_indicator == 'k':
+                value *= 1000
+            print(f"Applied inline scale {scale_indicator}: {value}")
         else:
-            # If no scale indicator in the value, apply the document-level scale factor
+            # Use document-level scale factor only if no inline indicator
             value *= scale_factor
+            print(f"Applied document scale factor {scale_factor}: {value}")
         
         # Apply negative if indicated by parentheses
         if is_negative:
             value = -value
+            print(f"Applied negative: {value}")
         
         # Return as integer if whole number, otherwise round to 2 decimal places
-        return int(value) if value.is_integer() else round(value, 2)
+        final_value = int(value) if value.is_integer() else round(value, 2)
+        print(f"Final formatted value: {final_value}")
+        return final_value
         
     except Exception as e:
         print(f"Error formatting value '{value_str}': {str(e)}")
@@ -277,15 +288,39 @@ def extract_income_statement(pdf_bytes):
             print("Using specific financial pattern recognition as last resort")
             
             patterns = {
-                'Revenue': [r'(?:Total\s+)?Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)', 
-                           r'(?:Total\s+)?Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Cost_of_Revenue': [r'Cost\s+of\s+(?:Revenue|Sales)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                                   r'COGS[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Gross_Profit': [r'Gross\s+Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Operating_Expenses': [r'(?:Total\s+)?Operating\s+Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Operating_Income': [r'Operating\s+(?:Income|Profit)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Net_Income': [r'Net\s+(?:Income|Profit|Earnings)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                              r'(?:Net\s+)?Profit\s+[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)']
+                'Revenue': [
+                    r'(?:Total\s+)?Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'(?:Total\s+)?Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Product_Revenue': [
+                    r'Product\s+Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'Products?\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Service_Revenue': [
+                    r'Service\s+Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'Services?\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Cost_of_Revenue': [
+                    r'Cost\s+of\s+(?:Revenue|Sales)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'COGS[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Gross_Profit': [
+                    r'Gross\s+Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Operating_Expenses': [
+                    r'(?:Total\s+)?Operating\s+Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Research_Development': [
+                    r'Research\s+(?:and|\&)?\s*Development[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'R\s*(?:\&|and)\s*D[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Sales_Marketing': [
+                    r'Sales\s+(?:and|\&)?\s*Marketing[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'General_Administrative': [
+                    r'General\s+(?:and|\&)?\s*Administrative[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'G\s*(?:\&|and)\s*A[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Operating_Income': [
+                    r'Operating\s+(?:Income|Profit)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Other_Income': [
+                    r'Other\s+Income[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Interest_Income': [
+                    r'Interest\s+Income[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
+                'Net_Income': [
+                    r'Net\s+(?:Income|Profit|Earnings)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
+                    r'(?:Net\s+)?Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)']
             }
             
             json_data = {}
@@ -332,6 +367,16 @@ def extract_income_statement(pdf_bytes):
             if key != "visualization_data":
                 print(f"{key}: {value:,}")
                 
+        # Sanity check for unreasonable values
+        MAX_REASONABLE_VALUE = 1e12  # 1 trillion
+        for key, value in formatted_data.items():
+            if isinstance(value, (int, float)) and abs(value) > MAX_REASONABLE_VALUE:
+                print(f"Warning: Unreasonably large value detected for {key}: {value}")
+                # Scale down the value if it's too large
+                scale_down = 1000  # Scale down by 1000
+                formatted_data[key] = value / scale_down
+                print(f"Scaled down to: {formatted_data[key]}")
+        
         return formatted_data
             
     except Exception as e:
