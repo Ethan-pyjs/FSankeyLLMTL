@@ -411,7 +411,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
         </div>
       </div>
       <p className="text-xs text-gray-400 mt-2 italic">
-        Note: Missing values are estimated based on standard financial ratios. For accurate visualization, ensure all income statement values are properly extracted.
+        Note: This project is in development. The Sankey chart is a work in progress and may not reflect all financial flows accurately.
       </p>
     </div>
   );
