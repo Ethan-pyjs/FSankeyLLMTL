@@ -12,6 +12,52 @@ def extract_text_from_pdf(pdf_bytes):
         text += page.get_text("text") + "\n\n"
     return text
 
+def detect_scale_notation(text):
+    """
+    Detect if the document specifies financial values in millions, billions, or thousands.
+    Returns a multiplication factor to use when converting values.
+    """
+    # Look for scale indicators commonly used in financial statements
+    million_patterns = [
+        r'\(in millions\)', r'\(in millions of', r'\(millions\)',
+        r'expressed in millions', r'amounts in millions',
+        r'in millions of dollars', r'presented in millions'
+    ]
+    
+    billion_patterns = [
+        r'\(in billions\)', r'\(in billions of', r'\(billions\)',
+        r'expressed in billions', r'amounts in billions',
+        r'in billions of dollars', r'presented in billions'
+    ]
+    
+    thousand_patterns = [
+        r'\(in thousands\)', r'\(in thousands of', r'\(thousands\)',
+        r'expressed in thousands', r'amounts in thousands',
+        r'in thousands of dollars', r'presented in thousands'
+    ]
+    
+    # Check for millions notation first (most common)
+    for pattern in million_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            print("Detected 'in millions' notation")
+            return 1000000  # Multiply by 1 million
+    
+    # Check for billions notation
+    for pattern in billion_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            print("Detected 'in billions' notation")
+            return 1000000000  # Multiply by 1 billion
+    
+    # Check for thousands notation
+    for pattern in thousand_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            print("Detected 'in thousands' notation")
+            return 1000  # Multiply by 1 thousand
+    
+    # Default assumption if no scale notation is found
+    print("No scale notation detected, assuming raw values")
+    return 1  # Don't multiply
+
 def clean_text_for_extraction(text):
     """Preprocess text to better identify financial data with improved financial marker detection."""
     # Remove multiple spaces and normalize newlines
@@ -24,7 +70,16 @@ def clean_text_for_extraction(text):
         "million", "billion", "thousand", "$", "USD", "dollars",
         # Additional terms to improve recognition
         "consolidated", "statement", "fiscal year", "quarter", 
-        "ended", "financial", "cash flow", "balance sheet"
+        "ended", "financial", "cash flow", "balance sheet", "net income", "operating income",
+        "cost of goods sold", "cogs", "operating expenses", "oe",
+        "net profit", "gross profit", "earnings before interest and taxes",
+        "ebit", "earnings before interest taxes depreciation and amortization",
+        "ebitda", "earnings per share", "eps", "dividend", "shareholder",
+        "equity", "debt", "interest", "taxes", "net margin", "operating margin",
+        "return on equity", "roe", "return on assets", "roa", "return on investment",
+        "roi", "working capital", "current assets", "current liabilities",
+        "accounts receivable", "accounts payable", "inventory", "fixed assets",
+        "net cash flow", "operating cash flow", "investing cash flow",
     ]
     
     for term in financial_terms:
@@ -33,26 +88,29 @@ def clean_text_for_extraction(text):
     
     return text
 
-def format_financial_value(value_str):
+def format_financial_value(value_str, scale_factor=1):
     """
-    Convert a string financial value to a numeric format in millions.
-    Enhanced to handle more financial notation patterns.
+    Convert a string financial value to a numeric format.
+    Enhanced to handle more financial notation patterns and apply the correct scale factor.
+    
+    Args:
+        value_str: The string representation of the financial value
+        scale_factor: Multiplication factor based on document notation (millions, billions, etc.)
+    
+    Returns:
+        A numeric value or "Unknown" if conversion fails
     """
     if not value_str or value_str == "Unknown":
         return "Unknown"
         
     try:
         # Check if string already represents a number (float or int)
-        try:
-            if isinstance(value_str, (int, float)):
-                return value_str
-        except:
-            pass
+        if isinstance(value_str, (int, float)):
+            # Apply scale factor to numeric values
+            return value_str * scale_factor
             
-        # Detect common financial notation patterns
-        original_str = value_str.lower()
-        
         # Handle parentheses notation for negative numbers: (123.45) → -123.45
+        original_str = value_str.lower()
         if '(' in original_str and ')' in original_str:
             value_str = '-' + re.sub(r'[()]', '', value_str)
         
@@ -64,14 +122,24 @@ def format_financial_value(value_str):
             
         value = float(clean_val)
         
-        # Check if there are indicators of scale
+        # Check if there are inline indicators of scale in the value itself
+        # This handles cases where individual values have their own unit indicators
         if "billion" in original_str or "b" in original_str.split():
-            value *= 1000  # Convert to millions
+            value *= 1000000000  # Raw value to absolute value
+        elif "million" in original_str or "m" in original_str.split():
+            value *= 1000000  # Raw value to absolute value
         elif "thousand" in original_str or "k" in original_str.split():
-            value /= 1000  # Convert to millions
+            value *= 1000  # Raw value to absolute value
+        else:
+            # Apply the document-level scale factor if no inline indicator is found
+            value *= scale_factor
             
-        # Round to 2 decimal places for cleaner values
-        return round(value, 2)
+        # For the JSON output, we want actual integers rather than floats when possible
+        if value == int(value):
+            return int(value)
+        else:
+            # Round to 2 decimal places for cleaner floating-point values
+            return round(value, 2)
     except:
         return "Unknown"
 
@@ -80,6 +148,9 @@ def extract_income_statement(pdf_bytes):
     try:
         # Extract text from PDF
         raw_text = extract_text_from_pdf(pdf_bytes)
+        
+        # Detect scale notation (in millions, in billions, etc.)
+        scale_factor = detect_scale_notation(raw_text)
         
         # Clean and prepare text for extraction
         processed_text = clean_text_for_extraction(raw_text)
@@ -90,12 +161,14 @@ def extract_income_statement(pdf_bytes):
         
         FORMAT INSTRUCTIONS (CRITICAL):
         1. Your response must ONLY contain a valid JSON object WITHOUT any markdown formatting
-        2. Each key must be in quotes, each value must be a number (without any currency symbols) or "Unknown" in quotes
+        2. Each key must be in quotes, each value must be a NUMBER (without any currency symbols) or "Unknown" in quotes
         3. DO NOT add any explanations, notes, or text outside the JSON object
-        4. Every value must be multiplied by 1 million (e.g., 1000 becomes 1000000, 10.5 becomes 10500000)
-        5. If a value is negative, represent it as a negative number like -10.5, not with parentheses
-        6. If a value is not found, use "Unknown" in quotes
-        7. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
+        4. IMPORTANT: Look for scale notations in the document like '(in millions)' or '(in thousands)'
+        5. If you see '(in millions)', the returned values should be the raw numbers as shown (e.g., 10.5, not 10,500,000)
+        6. If you see '(in billions)', the returned values should be the raw numbers as shown (e.g., 10.5, not 10,500,000,000)
+        7. If a value is negative, represent it as a negative number like -10.5, not with parentheses
+        8. If a value is not found, use "Unknown" in quotes
+        9. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
         
         KEYS TO EXTRACT:
         - "Revenue": The company's total income from sales
@@ -104,7 +177,7 @@ def extract_income_statement(pdf_bytes):
         - "Operating_Expenses": Expenses related to normal business operations
         - "Operating_Income": Gross Profit minus Operating Expenses
         - "Net_Income": Final profit after all expenses, taxes, interest
-        - ANy other relevant financial metrics you can identify
+        - Any other relevant financial metrics you can identify
         
         FINANCIAL DOCUMENT TEXT:
         \"\"\"
@@ -131,7 +204,7 @@ def extract_income_statement(pdf_bytes):
         
         # Second attempt: Look for a standalone JSON object
         if not json_data:
-            json_match = re.search(r'(\{[^{]*?"Revenue".*?\})', response, re.DOTALL)
+            json_match = re.search(r'(\{[^{]*?"[^"]*?".*?\})', response, re.DOTALL)
             if json_match:
                 try:
                     json_data = json.loads(json_match.group(1))
@@ -153,12 +226,15 @@ def extract_income_statement(pdf_bytes):
             6. Net Income
             
             Format your response exactly as:
-            Revenue: [numeric value in millions, without $ signs or commas]
-            Cost of Revenue: [numeric value in millions, without $ signs or commas]
-            Gross Profit: [numeric value in millions, without $ signs or commas]
-            Operating Expenses: [numeric value in millions, without $ signs or commas]
-            Operating Income: [numeric value in millions, without $ signs or commas]
-            Net Income: [numeric value in millions, without $ signs or commas]
+            Revenue: [numeric value without $ signs or commas]
+            Cost of Revenue: [numeric value without $ signs or commas]
+            Gross Profit: [numeric value without $ signs or commas]
+            Operating Expenses: [numeric value without $ signs or commas]
+            Operating Income: [numeric value without $ signs or commas]
+            Net Income: [numeric value without $ signs or commas]
+            
+            IMPORTANT: Return the values as shown in the document. Do NOT multiply by millions or billions.
+            Also indicate if you see any notation like "(in millions)" or "(in billions)" in the document.
             
             If any value can't be found, use "Unknown". Do not include any additional text or explanations.
             
@@ -174,7 +250,8 @@ def extract_income_statement(pdf_bytes):
                 if ':' in line:
                     key, value = line.split(':', 1)
                     key = key.strip().replace(' ', '_')
-                    json_data[key] = format_financial_value(value.strip())
+                    if key != 'Scale_Notation':  # Skip any scale notation line
+                        json_data[key] = value.strip()
         
         # Fourth attempt: Try a more targeted search for specific financial items
         if not json_data or len(json_data) < 3:
@@ -199,7 +276,7 @@ def extract_income_statement(pdf_bytes):
                     if matches:
                         # Take the first match
                         value_str = matches[0]
-                        json_data[key] = format_financial_value(value_str)
+                        json_data[key] = value_str
                         break
                 
                 # If no match found, set to Unknown
@@ -218,17 +295,14 @@ def extract_income_statement(pdf_bytes):
                 "Net_Income": "Unknown"
             }
         
-        # Ensure all keys use consistent formatting (snake_case)
+        # Ensure all keys use consistent formatting (snake_case) and apply scale factor to values
         formatted_data = {}
         for key, value in json_data.items():
             # Convert key to snake_case
             formatted_key = key.replace(' ', '_').replace('-', '_')
             
-            # Handle values that might have come through with currency symbols or commas
-            if value != "Unknown" and not isinstance(value, (int, float)):
-                formatted_data[formatted_key] = format_financial_value(str(value))
-            else:
-                formatted_data[formatted_key] = value
+            # Apply the scale factor to convert values according to document notation
+            formatted_data[formatted_key] = format_financial_value(value, scale_factor)
             
         return formatted_data
             

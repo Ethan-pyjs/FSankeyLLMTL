@@ -1,39 +1,42 @@
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface FinancialStoryProps {
   story: string;
 }
 
 export default function FinancialStory({ story }: FinancialStoryProps) {
-  const [formattedStory, setFormattedStory] = useState<React.ReactNode[]>([]);
+  const [markdownStory, setMarkdownStory] = useState<string>('');
   
   useEffect(() => {
     if (!story) return;
     
-    // Format the story into sections
-    formatStory(story);
+    // Convert the story to markdown format
+    const formattedMarkdown = convertToMarkdown(story);
+    setMarkdownStory(formattedMarkdown);
   }, [story]);
   
-  const formatStory = (storyText: string) => {
-    // Split the story into logical sections
-    // Look for patterns like section titles, numerical insights, etc.
-    
-    // Pattern matching for common financial analysis sections
-    const sections = [];
-    
-    // Try to identify sections and format them
-    let paragraphs = storyText.split('\n\n');
-    
-    // If there are no paragraph breaks, try to split by sentences
-    if (paragraphs.length <= 1) {
-      // Split by sentences and group into logical paragraphs
+  const convertToMarkdown = (storyText: string): string => {
+    // If there are already paragraph breaks, we'll enhance those
+    if (storyText.includes('\n\n')) {
+      let paragraphs = storyText.split('\n\n');
+      
+      // Process each paragraph and check if it's a potential header
+      return paragraphs.map((paragraph) => {
+        // Check if paragraph looks like a header (short, ends with colon, or all caps)
+        if (paragraph.length < 50 && (paragraph.endsWith(':') || paragraph.toUpperCase() === paragraph)) {
+          // Convert to markdown header and remove trailing colon
+          return `\n## ${paragraph.replace(/:\s*$/, '')}\n`;
+        } 
+        
+        // Format regular paragraphs with number highlighting
+        return formatParagraphWithHighlights(paragraph);
+      }).join('\n\n');
+    } else {
+      // If there are no paragraph breaks, try to split by sentences and identify sections
       const sentences = storyText.match(/[^.!?]+[.!?]+/g) || [];
       
-      // Group sentences into logical sections
-      const formattedSections: { title: string; content: string }[] = [];
-      
-      // Group related sentences into sections based on keywords
-      let currentSection: string[] = [];
+      // Define patterns for section identification
       const keywordPatterns = [
         { pattern: /overview|summary|analysis/i, title: "Overview" },
         { pattern: /revenue|sales|income/i, title: "Revenue Analysis" },
@@ -46,7 +49,7 @@ export default function FinancialStory({ story }: FinancialStoryProps) {
         { pattern: /ratio|financial health|liquidity/i, title: "Financial Health" }
       ];
       
-      // Helper to find the section title for a sentence
+      // Find section title for a sentence
       const findSectionTitle = (sentence: string) => {
         for (const { pattern, title } of keywordPatterns) {
           if (pattern.test(sentence)) {
@@ -56,19 +59,20 @@ export default function FinancialStory({ story }: FinancialStoryProps) {
         return null;
       };
       
-      // Process sentences into sections
+      // Group sentences into markdown sections
+      let markdownSections: string[] = [];
       let currentTitle = "Overview"; // Default title
+      let currentSection: string[] = [];
       
       sentences.forEach((sentence, index) => {
         // Check if this sentence should start a new section
         const sectionTitle = findSectionTitle(sentence);
         
         if (sectionTitle && currentSection.length > 0 && sectionTitle !== currentTitle) {
+          // Add the current section to markdown sections
+          markdownSections.push(`## ${currentTitle}\n\n${formatParagraphWithHighlights(currentSection.join(' '))}`);
+          
           // Start a new section
-          formattedSections.push({
-            title: currentTitle,
-            content: currentSection.join(' ')
-          });
           currentSection = [sentence];
           currentTitle = sectionTitle;
         } else {
@@ -78,61 +82,40 @@ export default function FinancialStory({ story }: FinancialStoryProps) {
         
         // Handle the last section
         if (index === sentences.length - 1 && currentSection.length > 0) {
-          formattedSections.push({
-            title: currentTitle,
-            content: currentSection.join(' ')
-          });
+          markdownSections.push(`## ${currentTitle}\n\n${formatParagraphWithHighlights(currentSection.join(' '))}`);
         }
       });
       
-      // Convert sections to JSX
-      formattedSections.forEach(section => {
-        sections.push(
-          <div key={section.title} className="mb-4">
-            <h3 className="text-lg font-semibold text-purple-300 mb-2">{section.title}</h3>
-            <p className="text-gray-200 leading-relaxed">{section.content}</p>
-          </div>
-        );
-      });
-    } else {
-      // Use existing paragraph breaks
-      paragraphs.forEach((paragraph, index) => {
-        // Try to determine if this is a header or section title
-        if (paragraph.length < 50 && (paragraph.endsWith(':') || paragraph.toUpperCase() === paragraph)) {
-          // This is likely a header
-          sections.push(
-            <h3 key={`header-${index}`} className="text-lg font-semibold text-purple-300 mt-4 mb-2">
-              {paragraph.replace(':', '')}
-            </h3>
-          );
-        } else {
-          // This is a regular paragraph
-          sections.push(
-            <p key={`para-${index}`} className="text-gray-200 leading-relaxed mb-3">
-              {paragraph}
-            </p>
-          );
-        }
-      });
+      return markdownSections.join('\n\n');
     }
-    
-    // If we couldn't identify sections, format as regular paragraphs with highlights
-    if (sections.length === 0) {
-      // Fallback: Format as a single block with highlighted numbers
-      const highlightedText = storyText.replace(
-        /(\$[\d,.]+|[\d,.]+%|[\d,.]+ million|[\d,.]+ billion)/g, 
-        '<span class="text-purple-300 font-semibold">$1</span>'
-      );
-      
-      sections.push(
-        <div key="fallback" 
-          className="text-gray-200 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: highlightedText }}
-        />
-      );
-    }
-    
-    setFormattedStory(sections);
+  };
+  
+  const formatParagraphWithHighlights = (paragraph: string): string => {
+    // Highlight financial numbers and metrics using markdown syntax
+    return paragraph
+      // Bold important financial figures
+      .replace(/(\$[\d,.]+|[\d,.]+%|[\d,.]+ million|[\d,.]+ billion)/g, '**$1**')
+      // Highlight trends with appropriate formatting
+      .replace(/(increased|decreased|grew|declined|rose|fell) by (\d+%|\$[\d,.]+)/gi, '$1 by **$2**')
+      // Add bullet points for lists that might be embedded in paragraphs
+      .replace(/(?:\r\n|\r|\n)(\d+\.\s)/g, '\n* ')
+      // Highlight important terms
+      .replace(/(ROI|ROE|EBITDA|EPS|P\/E ratio|quarterly|annually|fiscal year|Q[1-4]|FY\d{4})/g, '_$1_');
+  };
+  
+  // Custom components for rendering markdown with tailwind classes
+  const MarkdownComponents = {
+    h1: (props: any) => <h1 {...props} className="text-2xl font-bold text-purple-300 mb-3 mt-6" />,
+    h2: (props: any) => <h2 {...props} className="text-xl font-semibold text-purple-300 mb-2 mt-5" />,
+    h3: (props: any) => <h3 {...props} className="text-lg font-semibold text-purple-300 mb-2 mt-4" />,
+    p: (props: any) => <p {...props} className="text-gray-200 leading-relaxed mb-3" />,
+    strong: (props: any) => <span {...props} className="text-purple-300 font-semibold" />,
+    em: (props: any) => <span {...props} className="text-blue-300 italic" />,
+    ul: (props: any) => <ul {...props} className="list-disc pl-5 mb-3 text-gray-200" />,
+    ol: (props: any) => <ol {...props} className="list-decimal pl-5 mb-3 text-gray-200" />,
+    li: (props: any) => <li {...props} className="mb-1" />,
+    blockquote: (props: any) => <blockquote {...props} className="border-l-4 border-gray-500 pl-4 italic text-gray-300 my-3" />,
+    hr: (props: any) => <hr {...props} className="border-gray-700 my-4" />
   };
   
   // Render the empty state if no story
@@ -146,7 +129,9 @@ export default function FinancialStory({ story }: FinancialStoryProps) {
   
   return (
     <div className="financial-story">
-      {formattedStory}
+      <ReactMarkdown components={MarkdownComponents}>
+        {markdownStory}
+      </ReactMarkdown>
     </div>
   );
 }
