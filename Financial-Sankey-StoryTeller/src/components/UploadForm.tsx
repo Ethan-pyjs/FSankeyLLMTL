@@ -162,31 +162,35 @@ export default function UploadForm() {
               </div>
             )}
             
-            <button
-              onClick={handleUpload}
-              disabled={loading}
-              className={`px-6 py-4 rounded-md font-medium transition-all duration-200 transform hover:scale-105 w-full ${
-                loading 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-purple-700 hover:bg-purple-600 text-white hover:shadow-lg'
-              }`}
-            >
-              {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF and Analyze'}
-            </button>
-          </div>
-          
-          {loading && (
-            <div className="w-full mt-4">
-              <div className="bg-gray-700 bg-opacity-50 rounded-full h-4 overflow-hidden">
-                <div 
-                  className="bg-purple-600 h-full transition-all duration-500 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="text-sm text-gray-300 mt-2">{progressMessage}</p>
-              <p className="text-xs text-gray-400">{progress}% complete</p>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleUpload}
+                disabled={loading}
+                className={`px-6 py-4 rounded-md font-medium transition-all duration-200 transform hover:scale-105 ${
+                  loading 
+                    ? 'bg-gray-600 cursor-not-allowed w-48' 
+                    : 'bg-purple-700 hover:bg-purple-600 text-white hover:shadow-lg w-48'
+                }`}
+              >
+                {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF'}
+              </button>
+
+              {loading && (
+                <div className="flex-1">
+                  <div className="bg-gray-700 bg-opacity-50 rounded-full h-4 overflow-hidden">
+                    <div 
+                      className="bg-purple-600 h-full transition-all duration-500 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <p className="text-sm text-gray-300">{progressMessage}</p>
+                    <p className="text-xs text-gray-400">{progress}% complete</p>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {error && (
             <div className="mt-4 p-3 bg-red-900 bg-opacity-30 text-red-200 rounded-md border border-red-500 border-opacity-30">
