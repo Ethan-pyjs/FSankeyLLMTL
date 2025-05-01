@@ -424,7 +424,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
               node={<CustomNode />}
               link={{ 
               stroke: "#8B5CF6", // Purple color for links
-              strokeOpacity: 0.2,
+              strokeOpacity: 0.3,
               fillOpacity: 0.5,
               fill: "#8B5CF6" // Purple color for link fill
               }}
