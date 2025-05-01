@@ -1,15 +1,11 @@
 import { useState, useRef } from 'react'
 import SankeyChart from './SankeyChart'
-import FinancialStory from './FinancialStory'
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
   const [response, setResponse] = useState<any>(null)
-  const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [processingProgress, setProcessingProgress] = useState<number>(0);
-  const [processingPhase, setProcessingPhase] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,58 +16,49 @@ export default function UploadForm() {
   }
 
   const handleUpload = async () => {
+    // If no file is selected, open the file dialog
     if (!file) {
-      fileInputRef.current?.click();
-      return;
+      fileInputRef.current?.click()
+      return
     }
     
-    setLoading(true);
-    setError(null);
-    setUploadProgress(0);
-    setProcessingProgress(0);
+    // Check file extension
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setError("Only PDF files are supported")
+      return
+    }
+    
+    setLoading(true)
+    setError(null)
 
-    const formData = new FormData();
-    formData.append('file', file);
-
+    const formData = new FormData()
+    formData.append('file', file)
+      
     try {
-      // First upload the file
-      const uploadResponse = await fetch('http://127.0.0.1:8000/api/process', {
+      const res = await fetch(`http://127.0.0.1:8000/api/process`, {
         method: 'POST',
         body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      })
+      
+      if (!res.ok) {
+        throw new Error(`Server responded with status: ${res.status}`)
       }
-
-      const data = await uploadResponse.json();
       
-      // Start listening for processing progress
-      const eventSource = new EventSource(`http://127.0.0.1:8000/api/progress/${data.task_id}`);
+      const data = await res.json()
+      console.log("API Response:", data)
       
-      eventSource.onmessage = (event) => {
-        const progressData = JSON.parse(event.data);
-        setProcessingProgress(progressData.progress);
-        setProcessingPhase(progressData.phase);
-      };
-
-      eventSource.onerror = () => {
-        eventSource.close();
-        setProcessingProgress(100);
-      };
-
-      // Update your state with the response data
+      // Validate income statement data
       if (data.income_statement && Object.keys(data.income_statement).length > 0) {
-        setResponse(data);
+        setResponse(data)
       } else {
-        throw new Error("No valid income statement data returned");
+        throw new Error("No valid income statement data returned")
       }
-
+      
     } catch (error) {
-      console.error("Error during processing:", error);
-      setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Error during upload:", error)
+      setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -108,43 +95,8 @@ export default function UploadForm() {
             >
               {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF and Analyze'}
             </button>
-
-            {/* Progress bar with improved styling and animation */}
-            {uploadProgress > 0 && uploadProgress < 100 && (
-              <div className="mt-4">
-                <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="bg-purple-600 h-full rounded-full transition-all duration-300 ease-in-out"
-                    style={{ 
-                      width: `${uploadProgress}%`,
-                      transition: 'width 0.3s ease-in-out'
-                    }}
-                  />
-                </div>
-                <div className="text-xs text-gray-400 text-center mt-1">
-                  Uploading: {Math.round(uploadProgress)}%
-                </div>
-              </div>
-            )}
-
-            {/* Processing progress bar */}
-            {processingProgress > 0 && (
-              <div className="mt-4">
-                <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="bg-purple-600 h-full rounded-full transition-all duration-300 ease-in-out"
-                    style={{ 
-                      width: `${processingProgress}%`,
-                      transition: 'width 0.3s ease-in-out'
-                    }}
-                  />
-                </div>
-                <div className="text-xs text-gray-400 text-center mt-1">
-                  {processingPhase}: {Math.round(processingProgress)}%
-                </div>
-              </div>
-            )}
           </div>
+          
           {error && (
             <div className="mt-4 p-3 bg-red-900 bg-opacity-30 text-red-200 rounded-md border border-red-500 border-opacity-30">
               {error}
@@ -172,7 +124,7 @@ export default function UploadForm() {
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Analysis:</h2>
                 <div className="bg-black bg-opacity-30 p-4 rounded overflow-y-auto max-h-80 text-gray-200 text-left">
-                  <FinancialStory story={response.story} />
+                  {response.story}
                 </div>
                 <p className="text-xs text-gray-400 mt-2 italic text-right">
                   Processing time: {response.processing_time || "N/A"}

@@ -6,8 +6,6 @@ import os
 import logging
 from typing import Dict, Any
 import time
-import asyncio
-from sse_starlette.sse import EventSourceResponse
 
 # Set up logging
 logging.basicConfig(
@@ -53,30 +51,28 @@ async def process_pdf(file_content: bytes = Depends(validate_file)):
     """Process a PDF file to extract income statement and generate a story."""
     try:
         start_time = time.time()
-        task_id = str(start_time)  # Generate a simple task ID based on timestamp
-        logger.info(f"Task {task_id}: Starting financial document analysis")
+        logger.info("Starting financial document analysis")
         
         # Extract income statement
-        logger.info(f"Task {task_id}: Extracting income statement")
+        logger.info("Extracting income statement")
         income_statement = extract_income_statement(file_content)
         
         # Generate story based on income statement
-        logger.info(f"Task {task_id}: Generating financial story")
+        logger.info("Generating financial story")
         story = generate_story_from_json(income_statement)
         
         elapsed = time.time() - start_time
-        logger.info(f"Task {task_id}: Analysis completed in {elapsed:.2f} seconds")
+        logger.info(f"Analysis completed in {elapsed:.2f} seconds")
         
         # Check if we have valid data
         if "error" in income_statement and len(income_statement) <= 2:
-            logger.warning(f"Task {task_id}: Error in income statement extraction")
+            logger.warning("Error in income statement extraction")
             raise HTTPException(
                 status_code=422, 
                 detail="Could not extract financial data from the provided document"
             )
         
         return {
-            "task_id": task_id,
             "income_statement": income_statement,
             "story": story,
             "processing_time": f"{elapsed:.2f} seconds"
@@ -85,24 +81,6 @@ async def process_pdf(file_content: bytes = Depends(validate_file)):
     except Exception as e:
         logger.error(f"Error processing PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
-
-# New endpoint for sending processing progress via SSE
-@app.get("/api/progress/{task_id}")
-async def progress(task_id: str):
-    async def event_generator():
-        try:
-            # Simulated progress updates. In reality, you might hook into actual processing steps.
-            yield {"event": "progress", "data": '{"progress": 25, "phase": "Extracting income statement"}'}
-            await asyncio.sleep(1)
-            yield {"event": "progress", "data": '{"progress": 50, "phase": "Generating story"}'}
-            await asyncio.sleep(1)
-            yield {"event": "progress", "data": '{"progress": 75, "phase": "Finalizing results"}'}
-            await asyncio.sleep(1)
-            yield {"event": "progress", "data": '{"progress": 100, "phase": "Complete"}'}
-        except asyncio.CancelledError:
-            return
-
-    return EventSourceResponse(event_generator())
 
 # Health check endpoint
 @app.get("/health")
@@ -160,7 +138,7 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
-
+    
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting server on port {PORT}")
