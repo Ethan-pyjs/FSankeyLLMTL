@@ -15,36 +15,58 @@ export default function UploadForm() {
   useEffect(() => {
     if (taskId) {
       const eventSource = new EventSource(`http://127.0.0.1:8000/api/progress/${taskId}`);
-      
-      eventSource.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        console.log("Progress update:", data); // Debug log
-        
-        setProgress(data.progress || 0);
-        setProgressMessage(data.message || "Processing...");
-        
-        if (data.status === "completed") {
-          eventSource.close();
-          setResponse({
-            income_statement: data.income_statement,
-            story: data.story,
-            processing_time: data.processing_time
-          });
-          setLoading(false);
-        } else if (data.status === "error") {
-          eventSource.close();
-          setError(data.error || "An error occurred during processing");
-          setLoading(false);
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Progress update:", data);
+
+          if (data.status === "error") {
+            console.error("Server reported error:", data.error);
+            setError(data.error || "An error occurred during processing");
+            setLoading(false);
+            eventSource.close();
+            return;
+          }
+
+          // Update progress
+          setProgress(data.progress || 0);
+          setProgressMessage(data.message || "Processing...");
+
+          // Handle completion
+          if (data.status === "completed") {
+            console.log("Processing completed:", data);
+            setResponse({
+              income_statement: data.income_statement,
+              story: data.story,
+              processing_time: data.processing_time
+            });
+            setLoading(false);
+            eventSource.close();
+          }
+        } catch (error) {
+          console.error("Error parsing SSE data:", error);
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            setError("Failed to process updates from server");
+            setLoading(false);
+            eventSource.close();
+          }
         }
       };
-      
+
       eventSource.onerror = (error) => {
         console.error("EventSource error:", error);
-        eventSource.close();
-        setError("Lost connection to server. Please try again.");
-        setLoading(false);
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          setError("Lost connection to server. Please try again.");
+          setLoading(false);
+          eventSource.close();
+        }
       };
-      
+
       return () => {
         eventSource.close();
       };

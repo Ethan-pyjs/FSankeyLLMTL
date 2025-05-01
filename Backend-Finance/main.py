@@ -10,6 +10,7 @@ import time
 import asyncio
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+import json
 
 # Set up logging
 logging.basicConfig(
@@ -59,29 +60,40 @@ executor = ThreadPoolExecutor()
 async def progress(task_id: str):
     """Stream progress updates for a file processing task."""
     async def event_generator():
-        while True:
-            if task_id not in task_results:
-                yield {
-                    "data": {
-                        "error": "Task not found"
-                    }
-                }
-                break
-                
-            result = task_results[task_id]
+        if task_id not in task_results:
             yield {
-                "data": {
-                    "progress": result.get("progress", 0),
-                    "message": result.get("message", "Processing..."),
-                    "status": result.get("status", "processing")
-                }
+                "data": json.dumps({
+                    "status": "error",
+                    "error": "Task not found"
+                })
+            }
+            return
+
+        while True:
+            result = task_results[task_id]
+            data = {
+                "status": result.get("status", "processing"),
+                "progress": result.get("progress", 0),
+                "message": result.get("message", "Processing..."),
+            }
+            
+            # Include the complete data when status is "completed"
+            if result.get("status") == "completed":
+                data.update({
+                    "income_statement": result.get("income_statement"),
+                    "story": result.get("story"),
+                    "processing_time": result.get("processing_time")
+                })
+            
+            yield {
+                "data": json.dumps(data)
             }
             
             if result.get("status") in ["completed", "error"]:
                 break
                 
             await asyncio.sleep(1)
-    
+
     return EventSourceResponse(event_generator())
 
 @app.post("/api/process")
