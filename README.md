@@ -9,6 +9,17 @@ This project is designed to parse large financial documents into JSON files of j
 - **Backend**: Python & PyMuPDF
 - **LLMS**: Granite 3.3  & 3.2-vision
 
+### Specific Use Case
+- Vite: Open Source React and TypeScript Packaged Framework
+- React: Javascript Framework, easy to use
+- Typescript: Has everything about Javascript and more, and free!
+- FastAPI: For connection between front and back-end
+- CORS: For cross communication handling file upload between front to back then front again.
+- Python: Good for integration of libraries for this project
+- PyMuPDF: Helps with accessing and parsing the PDF document
+- Granite 3.3: Works well with 3.2-vision model, used for story generation.
+- Granite 3.2-vision: Specifically fine-tuned for documents and looking at charts, graphs, and such. Used for creating a JSON and getting the income statement.
+
 ## Installation
 1. Clone the repository:
     ```bash
