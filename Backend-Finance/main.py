@@ -9,6 +9,7 @@ from typing import Dict, Any
 import time
 import asyncio
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 # Set up logging
 logging.basicConfig(
@@ -52,28 +53,35 @@ async def validate_file(file: UploadFile = File(...)) -> bytes:
 # Add a simple in-memory storage for task results
 task_results: Dict[str, Any] = {}
 
+executor = ThreadPoolExecutor()
+
 @app.get("/api/progress/{task_id}")
 async def progress(task_id: str):
     """Stream progress updates for a file processing task."""
     async def event_generator():
-        progress_steps = [
-            ("Initializing PDF extraction", 10),
-            ("Extracting text from PDF", 30),
-            ("Processing financial data", 50),
-            ("Generating Sankey visualization data", 70),
-            ("Creating financial story", 90),
-            ("Completing analysis", 100)
-        ]
-        
-        for step, progress in progress_steps:
+        while True:
+            if task_id not in task_results:
+                yield {
+                    "data": {
+                        "error": "Task not found"
+                    }
+                }
+                break
+                
+            result = task_results[task_id]
             yield {
                 "data": {
-                    "progress": progress,
-                    "message": step
+                    "progress": result.get("progress", 0),
+                    "message": result.get("message", "Processing..."),
+                    "status": result.get("status", "processing")
                 }
             }
-            await asyncio.sleep(1)  # Simulate processing time
-
+            
+            if result.get("status") in ["completed", "error"]:
+                break
+                
+            await asyncio.sleep(1)
+    
     return EventSourceResponse(event_generator())
 
 @app.post("/api/process")
@@ -81,31 +89,67 @@ async def process_pdf(file_content: bytes = Depends(validate_file)):
     """Process a PDF file to extract income statement and generate a story."""
     try:
         task_id = str(uuid.uuid4())
-        
-        # Start processing in background
-        start_time = time.time()
-        
-        # Extract structured data
-        json_data = extract_income_statement(file_content)
-        
-        # Generate story
-        story = generate_story_from_json(json_data)
-        
-        # Calculate processing time
-        processing_time = f"{time.time() - start_time:.2f} seconds"
-        
-        # Store results
+        # Initialize task in results
         task_results[task_id] = {
-            "income_statement": json_data,
-            "story": story,
-            "processing_time": processing_time
+            "status": "processing",
+            "progress": 0,
+            "message": "Starting process..."
         }
+        
+        # Start background task
+        asyncio.create_task(process_file_background(task_id, file_content))
         
         return {"task_id": task_id}
         
     except Exception as e:
         logger.error(f"Error processing PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+
+async def process_file_background(task_id: str, file_content: bytes):
+    """Process file in background and update progress."""
+    try:
+        start_time = time.time()
+        
+        # Update progress for text extraction
+        task_results[task_id].update({
+            "progress": 30,
+            "message": "Extracting text from PDF"
+        })
+        # Extract structured data
+        json_data = await asyncio.get_event_loop().run_in_executor(
+            executor, extract_income_statement, file_content
+        )
+        
+        # Update progress for story generation
+        task_results[task_id].update({
+            "progress": 70,
+            "message": "Generating financial story"
+        })
+        # Generate story
+        story = await asyncio.get_event_loop().run_in_executor(
+            executor, generate_story_from_json, json_data
+        )
+        
+        processing_time = f"{time.time() - start_time:.2f} seconds"
+        
+        # Store final results
+        task_results[task_id] = {
+            "status": "completed",
+            "income_statement": json_data,
+            "story": story,
+            "processing_time": processing_time,
+            "progress": 100,
+            "message": "Analysis complete"
+        }
+        
+    except Exception as e:
+        logger.error(f"Background task error: {str(e)}")
+        task_results[task_id] = {
+            "status": "error",
+            "error": str(e),
+            "progress": 0,
+            "message": f"Error: {str(e)}"
+        }
 
 @app.get("/api/result/{task_id}")
 async def get_result(task_id: str):

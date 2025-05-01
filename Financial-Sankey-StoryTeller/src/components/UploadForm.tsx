@@ -14,44 +14,42 @@ export default function UploadForm() {
 
   useEffect(() => {
     if (taskId) {
-      const eventSource = new EventSource(`http://127.0.0.1:8000/api/progress/${taskId}`)
+      const eventSource = new EventSource(`http://127.0.0.1:8000/api/progress/${taskId}`);
       
       eventSource.onmessage = async (event) => {
-        const data = JSON.parse(event.data)
-        setProgress(data.progress)
-        setProgressMessage(data.message)
+        const data = JSON.parse(event.data);
+        console.log("Progress update:", data); // Debug log
         
-        if (data.progress === 100) {
-          eventSource.close()
-          // Fetch the final results after processing is complete
-          try {
-            const resultRes = await fetch(`http://127.0.0.1:8000/api/result/${taskId}`)
-            if (!resultRes.ok) {
-              throw new Error(`Error fetching results: ${resultRes.status}`)
-            }
-            const resultData = await resultRes.json()
-            setResponse(resultData)
-            setLoading(false)
-          } catch (error) {
-            console.error("Error fetching results:", error)
-            setError(`Error fetching results: ${error instanceof Error ? error.message : "Unknown error"}`)
-            setLoading(false)
-          }
+        setProgress(data.progress || 0);
+        setProgressMessage(data.message || "Processing...");
+        
+        if (data.status === "completed") {
+          eventSource.close();
+          setResponse({
+            income_statement: data.income_statement,
+            story: data.story,
+            processing_time: data.processing_time
+          });
+          setLoading(false);
+        } else if (data.status === "error") {
+          eventSource.close();
+          setError(data.error || "An error occurred during processing");
+          setLoading(false);
         }
-      }
+      };
       
       eventSource.onerror = (error) => {
-        console.error("EventSource error:", error)
-        setError("Lost connection to server")
-        setLoading(false)
-        eventSource.close()
-      }
+        console.error("EventSource error:", error);
+        eventSource.close();
+        setError("Lost connection to server. Please try again.");
+        setLoading(false);
+      };
       
       return () => {
-        eventSource.close()
-      }
+        eventSource.close();
+      };
     }
-  }, [taskId])
+  }, [taskId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
