@@ -4,7 +4,7 @@ def generate_story_from_json(data):
     """
     Generate a financial narrative based on income statement data.
     The story aims to be more insightful and contextual. 
-    Write enough to cover the key points and around five pages of text. 
+    Write enough to cover the key points and around ten pages of text. 
     Please format it so it's easy to read and understand.
     """
     # Create a more tailored prompt based on available data
@@ -37,9 +37,17 @@ def generate_story_from_json(data):
         4. Overall financial health assessment
         5. Potential areas of concern or strength
         
-        Write in a professional but easy to read style that a business executive would appreciate.
-        I would prefer you write up to five pages of text, but please ensure the content is concise and relevant.
+        Write in a way that is interesting to both financial professionals and laypersons. Captivating with a story-like approach.
+        Without losing the essence of financial analysis, ensure that the content is structured and easy to follow.
+        Use bullet points or sections where appropriate to enhance readability.
+        I would prefer you write up to ten pages of text, but please ensure the content is concise and relevant.
         Avoid unnecessary jargon and keep the language accessible.
+
+        The story should have these elements:
+        1. Have a goal to educate the reader about financial statements and their importance in business analysis. Ultimately, leaving the reader with a lesson learned.
+        2. Be engaging and interesting, aiming to hook the reader's attention.
+        3. It should make the reader feel like they are part of the story, as if they are experiencing the financial journey of the company.
+        4. Information should be memorable and easy to digest, even for those not familiar with finance.
         """
         
         model = "granite3.3:8B"  # Use Granite 3.3:8B model for narrative generation

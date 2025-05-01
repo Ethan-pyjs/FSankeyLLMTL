@@ -390,14 +390,14 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
               node={<CustomNode />}
               link={{ 
                 stroke: "#4B5563",
-                strokeOpacity: 0.5,
+                strokeOpacity: 0.6,
                 fillOpacity: 0.5,
                 fill: "#6D28D9"
               }}
               // Improved margins to keep everything in view with the added labels
-              margin={{ top: 50, right: 100, bottom: 20, left: 50 }}
-              nodePadding={10} // Increased padding between nodes for value labels
-              nodeWidth={12}
+              margin={{ top: 20, right: 100, bottom: 5, left: 50 }}
+              nodePadding={5} // Increased padding between nodes for value labels
+              nodeWidth={13}
               iterations={64}
             >
               <Tooltip 
