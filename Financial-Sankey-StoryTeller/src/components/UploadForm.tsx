@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import SankeyChart from './SankeyChart'
+import ReactMarkdown from 'react-markdown'
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
@@ -116,15 +117,18 @@ export default function UploadForm() {
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Flow Visualization:</h2>
-                <div className="sankey-container" style={{ minHeight: "250px" }}>
+                {/* Increased minHeight from 250px to 350px (or any value you'd prefer) */}
+                <div className="sankey-container" style={{ minHeight: "550px" }}>
                   <SankeyChart incomeStatement={response.income_statement} />
                 </div>
               </div>
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Analysis:</h2>
-                <div className="bg-black bg-opacity-30 p-4 rounded overflow-y-auto max-h-80 text-gray-200 text-left">
-                  {response.story}
+                <div className="bg-blue-800 p-4 rounded overflow-y-auto max-h-80 text-gray-200 text-left">
+                  <ReactMarkdown>
+                    {response.story}
+                  </ReactMarkdown>
                 </div>
                 <p className="text-xs text-gray-400 mt-2 italic text-right">
                   Processing time: {response.processing_time || "N/A"}

@@ -150,19 +150,17 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
         financialData.Operating_Income = financialData.Net_Income * 1.25; // Reverse estimate
       }
       
-      // Calculate tax and other expenses
-      const taxAndOther = Math.max(0, financialData.Operating_Income - financialData.Net_Income);
+      // Calculate tax and other expenses (removed unused variable)
       
       console.log("Processed financial data:", financialData);
       
-      // Create Sankey nodes with value property for reference
+      // Create default nodes for known metrics
       const nodes: SankeyNode[] = [
         { name: 'Revenue', value: financialData.Revenue },
         { name: 'Cost', value: financialData.Cost_of_Revenue },
         { name: 'Gross Profit', value: financialData.Gross_Profit },
         { name: 'Op Expenses', value: financialData.Operating_Expenses },
         { name: 'Op Income', value: financialData.Operating_Income },
-        { name: 'Taxes', value: taxAndOther },
         { name: 'Net Income', value: financialData.Net_Income }
       ];
       
@@ -174,12 +172,10 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       const grossProfit = Math.max(minFlowValue, Math.abs(financialData.Gross_Profit));
       const operatingExpenses = Math.max(minFlowValue, Math.abs(financialData.Operating_Expenses));
       const operatingIncome = Math.max(minFlowValue, Math.abs(financialData.Operating_Income));
-      const taxesAndOther = Math.max(minFlowValue, Math.abs(taxAndOther));
       const netIncome = Math.max(minFlowValue, Math.abs(financialData.Net_Income));
       
-      // Create Sankey links with appropriate values
+      // Create links for known flows (unchanged)
       const links: SankeyLink[] = [
-        // Revenue splits into Cost of Revenue and Gross Profit
         { 
           source: 0, 
           target: 1, 
@@ -192,7 +188,6 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           value: grossProfit,
           absoluteValue: financialData.Gross_Profit
         },
-        // Gross Profit splits into Operating Expenses and Operating Income
         { 
           source: 2, 
           target: 3, 
@@ -205,21 +200,43 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           value: operatingIncome,
           absoluteValue: financialData.Operating_Income
         },
-        // Operating Income splits into Taxes & Other and Net Income
-        {
-          source: 4,
-          target: 5,
-          value: taxesAndOther,
-          absoluteValue: taxAndOther
-        },
         { 
           source: 4, 
-          target: 6, 
+          target: 5, 
           value: netIncome,
           absoluteValue: financialData.Net_Income
         }
       ];
       
+      // --- New Code for Handling Extra Buckets ---
+      // Define the known keys matching your financialData keys
+      const knownKeys = ["Revenue", "Cost_of_Revenue", "Gross_Profit", "Operating_Expenses", "Operating_Income", "Net_Income"];
+
+      // Sum up any extra values returned in the incomeStatement
+      let extraSum = 0;
+      Object.entries(incomeStatement).forEach(([key, value]) => {
+        if (!knownKeys.includes(key)) {
+          const num = Number(value);
+          if (!isNaN(num)) {
+            extraSum += Math.abs(num);
+          }
+        }
+      });
+
+      // If extra buckets exist, add an "Other" node and corresponding link
+      if (extraSum > 0) {
+        const otherNodeIndex = nodes.length;
+        nodes.push({ name: 'Other', value: extraSum });
+        
+        // For example, add a link from Revenue (index 0) to Other
+        links.push({
+          source: 0,
+          target: otherNodeIndex,
+          value: extraSum,
+          absoluteValue: extraSum
+        });
+      }
+
       // Add a validation step to ensure the sum of incoming values roughly equals the sum of outgoing values
       // This makes the Sankey diagram look more natural
       
@@ -236,7 +253,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       }
       
       // Check operating income -> (taxes & other + net income)
-      const totalOutFromOperatingIncome = taxesAndOther + netIncome;
+      const totalOutFromOperatingIncome = netIncome;
       if (Math.abs(operatingIncome - totalOutFromOperatingIncome) > 0.1) {
         console.warn("Operating income flow mismatch:", { operatingIncome, totalOutFromOperatingIncome });
       }
@@ -310,7 +327,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     
     // Determine label position based on node position in the flow
     const isLeftNode = index === 0; // Revenue
-    const isRightNode = index === 6; // Net Income
+    const isRightNode = index === 5; // Net Income
     const isCenterLeftNode = index === 2; // Gross Profit
     const isCenterRightNode = index === 4; // Operating Income
     
