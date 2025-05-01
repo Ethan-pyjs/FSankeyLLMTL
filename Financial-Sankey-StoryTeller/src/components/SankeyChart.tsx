@@ -417,7 +417,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     <div className="w-full" style={{ height: "350px", minHeight: "650px" }}> {/* Increased height to accommodate labels */}
       <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
         {/* Force a specific height for the container to ensure visibility */}
-        <div style={{ width: '75%', height: '600px', position: 'relative' }}> {/* Increased height */}
+        <div style={{ width: '80%', height: '600px', position: 'relative' }}> {/* Increased height */}
           <ResponsiveContainer width="100%" height="100%">
             <Sankey
               data={data}
@@ -428,8 +428,8 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
               fillOpacity: 0.5,
               fill: "#8B5CF6" // Purple color for link fill
               }}
-              margin={{ top: 20, right: 100, bottom: 5, left: 50 }}
-              nodePadding={5}
+              margin={{ top: 20, right: 100, bottom: 50, left: 50 }}
+              nodePadding={20}
               nodeWidth={13}
               iterations={64}
             >
