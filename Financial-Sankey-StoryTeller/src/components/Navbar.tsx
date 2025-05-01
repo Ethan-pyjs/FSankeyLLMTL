@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react'; // Import icons from lucide-react
+import { Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +14,7 @@ export default function Navbar() {
     <Link
       to={to}
       onClick={() => setIsOpen(false)}
-      className={`px-4 py-2 rounded-md text-sm font-medium w-full ${
+      className={`block px-4 py-2 rounded-md text-sm font-medium ${
         location.pathname === to
           ? 'bg-purple-700 text-white'
           : 'text-gray-300 hover:bg-purple-600 hover:text-white'
@@ -25,38 +25,28 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="bg-gray-900 bg-opacity-40 border-b border-purple-500 border-opacity-20 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <span className="text-purple-300 font-bold text-xl">Financial Storyteller</span>
+    <nav className="fixed top-0 right-0 z-50 p-4">
+      <div className="relative">
+        {/* Menu Button */}
+        <button
+          onClick={toggleMenu}
+          className="p-2 rounded-md bg-gray-900 bg-opacity-80 text-purple-300 hover:text-white hover:bg-purple-600 transition-colors duration-200 border border-purple-500 border-opacity-20"
+          aria-label="Toggle menu"
+        >
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 bg-opacity-95 border border-purple-500 border-opacity-20 shadow-lg"
+               style={{ backdropFilter: 'blur(8px)' }}>
+            <div className="py-2">
+              <NavLink to="/">Home </NavLink>
+              <NavLink to="/about"> About Me </NavLink>
+              <NavLink to="/changelog"> Changelog</NavLink>
+            </div>
           </div>
-
-          {/* Menu Button */}
-          <button
-            onClick={toggleMenu}
-            className="p-2 rounded-md text-purple-300 hover:text-white hover:bg-purple-600 transition-colors duration-200"
-            aria-label="Toggle menu"
-          >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Dropdown Menu */}
-      <div
-        className={`absolute right-0 mt-0 w-48 rounded-b-lg bg-gray-900 bg-opacity-95 border border-purple-500 border-opacity-20 shadow-lg transform transition-all duration-200 ease-in-out ${
-          isOpen
-            ? 'opacity-100 translate-y-0'
-            : 'opacity-0 -translate-y-2 pointer-events-none'
-        }`}
-        style={{ backdropFilter: 'blur(8px)' }}
-      >
-        <div className="p-2 space-y-1">
-          <NavLink to="/">Home</NavLink>
-          <NavLink to="/about">About Me</NavLink>
-          <NavLink to="/changelog">Changelog</NavLink>
-        </div>
+        )}
       </div>
     </nav>
   );
