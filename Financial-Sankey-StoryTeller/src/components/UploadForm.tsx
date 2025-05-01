@@ -8,11 +8,21 @@ export default function UploadForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0])
       setError(null) // Clear any previous errors
+    }
+  }
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setLoading(false)
+      setError("Upload canceled by user")
     }
   }
 
@@ -32,6 +42,10 @@ export default function UploadForm() {
     setLoading(true)
     setError(null)
 
+    // Create a new AbortController for this request
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
     const formData = new FormData()
     formData.append('file', file)
       
@@ -39,6 +53,7 @@ export default function UploadForm() {
       const res = await fetch(`http://127.0.0.1:8000/api/process`, {
         method: 'POST',
         body: formData,
+        signal: signal
       })
       
       if (!res.ok) {
@@ -56,10 +71,16 @@ export default function UploadForm() {
       }
       
     } catch (error) {
-      console.error("Error during upload:", error)
-      setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
+      // Don't show error message if the request was aborted
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.log('Request aborted')
+      } else {
+        console.error("Error during upload:", error)
+        setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
+      }
     } finally {
       setLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -98,17 +119,28 @@ export default function UploadForm() {
               </div>
             )}
             
-            <button
-              onClick={handleUpload}
-              disabled={loading}
-              className={`px-6 py-4 rounded-md font-medium transition-all duration-200 transform hover:scale-105 w-full ${
-                loading 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-purple-700 hover:bg-purple-600 text-white hover:shadow-lg'
-              }`}
-            >
-              {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF and Analyze'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleUpload}
+                disabled={loading}
+                className={`px-6 py-4 rounded-md font-medium transition-all duration-200 transform hover:scale-105 flex-1 ${
+                  loading 
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-purple-700 hover:bg-purple-600 text-white hover:shadow-lg'
+                }`}
+              >
+                {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF and Analyze'}
+              </button>
+              
+              {loading && (
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-4 rounded-md font-medium transition-all duration-200 bg-red-700 hover:bg-red-600 text-white hover:shadow-lg hover:scale-105"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </div>
           
           {error && (
