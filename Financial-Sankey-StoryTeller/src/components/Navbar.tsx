@@ -14,7 +14,7 @@ export default function Navbar() {
     <Link
       to={to}
       onClick={() => setIsOpen(false)}
-      className={`block px-4 py-2 rounded-md text-sm font-medium ${
+      className={`block px-4 py-5 rounded-md text-base font-medium ${
         location.pathname === to
           ? 'bg-purple-700 text-white'
           : 'text-gray-300 hover:bg-purple-600 hover:text-white'
@@ -38,7 +38,7 @@ export default function Navbar() {
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 bg-opacity-95 border border-purple-500 border-opacity-20 shadow-lg"
+          <div className="absolute right-0 mt-2 w-56 rounded-lg bg-gray-900 bg-opacity-95 border border-purple-500 border-opacity-20 shadow-lg"
                style={{ backdropFilter: 'blur(8px)' }}>
             <div className="py-2">
               <NavLink to="/">Home </NavLink>

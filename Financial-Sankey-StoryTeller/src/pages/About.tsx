@@ -1,4 +1,4 @@
-import { Linkedin, Mail } from 'lucide-react';
+import { Linkedin } from 'lucide-react';
 
 export default function About() {
   const socialLinks = [
@@ -6,11 +6,6 @@ export default function About() {
       name: 'LinkedIn',
       url: 'https://linkedin.com/in/phamethanv',
       icon: <Linkedin className="w-6 h-6" />
-    },
-    {
-      name: 'Email',
-      url: 'mailto:phamethanv@gmail.com',
-      icon: <Mail className="w-6 h-6" />
     }
   ];
 
@@ -42,8 +37,10 @@ export default function About() {
             My name is Ethan, I am a student studying Artificial Intelligence and Robotics. I'm very
             passionate about technology and am a strong believer in lifelong learning. This project
             was my final project for my Finance in AI class. I hope that anyone who comes across this
-            project finds it useful and informative. I am always open to feedback and suggestions for
-            improvement. Please feel free to reach out to me through my LinkedIn or email.
+            project finds it useful and informative. I would suggest that you try out different LLMs and see how they perform.
+            I'm using a low parameter model for the initial version of this project. 
+            I am always open to feedback and suggestions for improvement.
+            Please feel free to reach out to me through my LinkedIn or email.
           </p>
         </div>
 
