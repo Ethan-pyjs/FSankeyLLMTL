@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import SankeyChart from './SankeyChart'
 import ReactMarkdown from 'react-markdown'
 
@@ -7,7 +7,51 @@ export default function UploadForm() {
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [progressMessage, setProgressMessage] = useState('')
+  const [taskId, setTaskId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (taskId) {
+      const eventSource = new EventSource(`http://127.0.0.1:8000/api/progress/${taskId}`)
+      
+      eventSource.onmessage = async (event) => {
+        const data = JSON.parse(event.data)
+        setProgress(data.progress)
+        setProgressMessage(data.message)
+        
+        if (data.progress === 100) {
+          eventSource.close()
+          // Fetch the final results after processing is complete
+          try {
+            const resultRes = await fetch(`http://127.0.0.1:8000/api/result/${taskId}`)
+            if (!resultRes.ok) {
+              throw new Error(`Error fetching results: ${resultRes.status}`)
+            }
+            const resultData = await resultRes.json()
+            setResponse(resultData)
+            setLoading(false)
+          } catch (error) {
+            console.error("Error fetching results:", error)
+            setError(`Error fetching results: ${error instanceof Error ? error.message : "Unknown error"}`)
+            setLoading(false)
+          }
+        }
+      }
+      
+      eventSource.onerror = (error) => {
+        console.error("EventSource error:", error)
+        setError("Lost connection to server")
+        setLoading(false)
+        eventSource.close()
+      }
+      
+      return () => {
+        eventSource.close()
+      }
+    }
+  }, [taskId])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -29,25 +73,21 @@ export default function UploadForm() {
   }
 
   const handleUpload = async () => {
-    // If no file is selected, open the file dialog
     if (!file) {
       fileInputRef.current?.click()
       return
     }
     
-    // Double-check file extension as an additional security measure
-    if (!file.name.toLowerCase().endsWith('.pdf') || file.type !== 'application/pdf') {
-      setError("Only PDF files are supported")
-      return
-    }
-    
     setLoading(true)
     setError(null)
+    setProgress(0)
+    setProgressMessage('Starting upload...')
 
     const formData = new FormData()
     formData.append('file', file)
       
     try {
+      // First get the task ID
       const res = await fetch(`http://127.0.0.1:8000/api/process`, {
         method: 'POST',
         body: formData,
@@ -57,20 +97,12 @@ export default function UploadForm() {
         throw new Error(`Server responded with status: ${res.status}`)
       }
       
-      const data = await res.json()
-      console.log("API Response:", data)
-      
-      // Validate income statement data
-      if (data.income_statement && Object.keys(data.income_statement).length > 0) {
-        setResponse(data)
-      } else {
-        throw new Error("No valid income statement data returned")
-      }
+      const { task_id } = await res.json()
+      setTaskId(task_id)
       
     } catch (error) {
       console.error("Error during upload:", error)
       setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
-    } finally {
       setLoading(false)
     }
   }
@@ -123,6 +155,19 @@ export default function UploadForm() {
             </button>
           </div>
           
+          {loading && (
+            <div className="w-full mt-4">
+              <div className="bg-gray-700 bg-opacity-50 rounded-full h-4 overflow-hidden">
+                <div 
+                  className="bg-purple-600 h-full transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-sm text-gray-300 mt-2">{progressMessage}</p>
+              <p className="text-xs text-gray-400">{progress}% complete</p>
+            </div>
+          )}
+
           {error && (
             <div className="mt-4 p-3 bg-red-900 bg-opacity-30 text-red-200 rounded-md border border-red-500 border-opacity-30">
               {error}

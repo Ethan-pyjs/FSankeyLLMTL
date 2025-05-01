@@ -1,11 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from services.parse_pdf import extract_income_statement
 from services.generate_story import generate_story_from_json
+from sse_starlette.sse import EventSourceResponse
 import os
 import logging
 from typing import Dict, Any
 import time
+import asyncio
+import uuid
 
 # Set up logging
 logging.basicConfig(
@@ -46,41 +49,74 @@ async def validate_file(file: UploadFile = File(...)) -> bytes:
     
     return content
 
+# Add a simple in-memory storage for task results
+task_results: Dict[str, Any] = {}
+
+@app.get("/api/progress/{task_id}")
+async def progress(task_id: str):
+    """Stream progress updates for a file processing task."""
+    async def event_generator():
+        progress_steps = [
+            ("Initializing PDF extraction", 10),
+            ("Extracting text from PDF", 30),
+            ("Processing financial data", 50),
+            ("Generating Sankey visualization data", 70),
+            ("Creating financial story", 90),
+            ("Completing analysis", 100)
+        ]
+        
+        for step, progress in progress_steps:
+            yield {
+                "data": {
+                    "progress": progress,
+                    "message": step
+                }
+            }
+            await asyncio.sleep(1)  # Simulate processing time
+
+    return EventSourceResponse(event_generator())
+
 @app.post("/api/process")
 async def process_pdf(file_content: bytes = Depends(validate_file)):
     """Process a PDF file to extract income statement and generate a story."""
     try:
+        task_id = str(uuid.uuid4())
+        
+        # Start processing in background
         start_time = time.time()
-        logger.info("Starting financial document analysis")
         
-        # Extract income statement
-        logger.info("Extracting income statement")
-        income_statement = extract_income_statement(file_content)
+        # Extract structured data
+        json_data = extract_income_statement(file_content)
         
-        # Generate story based on income statement
-        logger.info("Generating financial story")
-        story = generate_story_from_json(income_statement)
+        # Generate story
+        story = generate_story_from_json(json_data)
         
-        elapsed = time.time() - start_time
-        logger.info(f"Analysis completed in {elapsed:.2f} seconds")
+        # Calculate processing time
+        processing_time = f"{time.time() - start_time:.2f} seconds"
         
-        # Check if we have valid data
-        if "error" in income_statement and len(income_statement) <= 2:
-            logger.warning("Error in income statement extraction")
-            raise HTTPException(
-                status_code=422, 
-                detail="Could not extract financial data from the provided document"
-            )
-        
-        return {
-            "income_statement": income_statement,
+        # Store results
+        task_results[task_id] = {
+            "income_statement": json_data,
             "story": story,
-            "processing_time": f"{elapsed:.2f} seconds"
+            "processing_time": processing_time
         }
+        
+        return {"task_id": task_id}
         
     except Exception as e:
         logger.error(f"Error processing PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+
+@app.get("/api/result/{task_id}")
+async def get_result(task_id: str):
+    """Get the results for a specific task ID."""
+    if task_id not in task_results:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    result = task_results[task_id]
+    # Optionally remove the result from storage after retrieving
+    del task_results[task_id]
+    return result
 
 # Health check endpoint
 @app.get("/health")
