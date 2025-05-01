@@ -164,11 +164,12 @@ def extract_income_statement(pdf_bytes):
         2. Each key must be in quotes, each value must be a NUMBER (without any currency symbols) or "Unknown" in quotes
         3. DO NOT add any explanations, notes, or text outside the JSON object
         4. IMPORTANT: Look for scale notations in the document like '(in millions)' or '(in thousands)'
-        5. If you see '(in millions)', the returned values should be the raw numbers as shown (e.g., 10.5, not 10,500,000)
-        6. If you see '(in billions)', the returned values should be the raw numbers as shown (e.g., 10.5, not 10,500,000,000)
-        7. If a value is negative, represent it as a negative number like -10.5, not with parentheses
-        8. If a value is not found, use "Unknown" in quotes
-        9. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
+        5. If you see '(in millions)', multiply the returned values by 1,000,000 (e.g., 10.5 becomes 10,500,000)
+        6. If you see '(in billions)', multiply the returned values by 1,000,000,000 (e.g., 10.5 becomes 10,500,000,000)
+        7. If you see '(in thousands)', multiply the returned values by 1,000 (e.g., 10.5 becomes 10,500)
+        8. If a value is negative, represent it as a negative number like -10.5, not with parentheses
+        9. If a value is not found, use "Unknown" in quotes
+        10. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
         
         KEYS TO EXTRACT:
         - "Revenue": The company's total income from sales

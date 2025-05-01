@@ -117,8 +117,7 @@ export default function UploadForm() {
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Flow Visualization:</h2>
-                {/* Increased minHeight from 250px to 350px (or any value you'd prefer) */}
-                <div className="sankey-container" style={{ minHeight: "550px" }}>
+                <div className="sankey-container" style={{ minHeight: "250px" }}>
                   <SankeyChart incomeStatement={response.income_statement} />
                 </div>
               </div>

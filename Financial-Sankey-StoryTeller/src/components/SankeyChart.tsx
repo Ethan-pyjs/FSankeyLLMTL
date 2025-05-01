@@ -150,11 +150,9 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
         financialData.Operating_Income = financialData.Net_Income * 1.25; // Reverse estimate
       }
       
-      // Calculate tax and other expenses (removed unused variable)
-      
       console.log("Processed financial data:", financialData);
       
-      // Create default nodes for known metrics
+      // Create Sankey nodes with value property for reference
       const nodes: SankeyNode[] = [
         { name: 'Revenue', value: financialData.Revenue },
         { name: 'Cost', value: financialData.Cost_of_Revenue },
@@ -174,8 +172,9 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       const operatingIncome = Math.max(minFlowValue, Math.abs(financialData.Operating_Income));
       const netIncome = Math.max(minFlowValue, Math.abs(financialData.Net_Income));
       
-      // Create links for known flows (unchanged)
+      // Create Sankey links with appropriate values
       const links: SankeyLink[] = [
+        // Revenue splits into Cost of Revenue and Gross Profit
         { 
           source: 0, 
           target: 1, 
@@ -188,6 +187,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           value: grossProfit,
           absoluteValue: financialData.Gross_Profit
         },
+        // Gross Profit splits into Operating Expenses and Operating Income
         { 
           source: 2, 
           target: 3, 
@@ -200,6 +200,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           value: operatingIncome,
           absoluteValue: financialData.Operating_Income
         },
+        // Operating Income flows directly to Net Income
         { 
           source: 4, 
           target: 5, 
@@ -208,35 +209,6 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
         }
       ];
       
-      // --- New Code for Handling Extra Buckets ---
-      // Define the known keys matching your financialData keys
-      const knownKeys = ["Revenue", "Cost_of_Revenue", "Gross_Profit", "Operating_Expenses", "Operating_Income", "Net_Income"];
-
-      // Sum up any extra values returned in the incomeStatement
-      let extraSum = 0;
-      Object.entries(incomeStatement).forEach(([key, value]) => {
-        if (!knownKeys.includes(key)) {
-          const num = Number(value);
-          if (!isNaN(num)) {
-            extraSum += Math.abs(num);
-          }
-        }
-      });
-
-      // If extra buckets exist, add an "Other" node and corresponding link
-      if (extraSum > 0) {
-        const otherNodeIndex = nodes.length;
-        nodes.push({ name: 'Other', value: extraSum });
-        
-        // For example, add a link from Revenue (index 0) to Other
-        links.push({
-          source: 0,
-          target: otherNodeIndex,
-          value: extraSum,
-          absoluteValue: extraSum
-        });
-      }
-
       // Add a validation step to ensure the sum of incoming values roughly equals the sum of outgoing values
       // This makes the Sankey diagram look more natural
       
@@ -397,10 +369,10 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
   };
 
   return (
-    <div className="w-full" style={{ height: "350px", minHeight: "300px" }}> {/* Increased height to accommodate labels */}
+    <div className="w-full" style={{ height: "350px", minHeight: "650px" }}> {/* Increased height to accommodate labels */}
       <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
         {/* Force a specific height for the container to ensure visibility */}
-        <div style={{ width: '100%', height: '300px', position: 'relative' }}> {/* Increased height */}
+        <div style={{ width: '75%', height: '600px', position: 'relative' }}> {/* Increased height */}
           <ResponsiveContainer width="100%" height="100%">
             <Sankey
               data={data}
@@ -408,7 +380,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
               link={{ 
                 stroke: "#4B5563",
                 strokeOpacity: 0.6,
-                fillOpacity: 0.5,
+                fillOpacity: 0.9,
                 fill: "#6D28D9"
               }}
               // Improved margins to keep everything in view with the added labels
