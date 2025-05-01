@@ -8,6 +8,8 @@ export default function UploadForm() {
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [processingPhase, setProcessingPhase] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,66 +21,57 @@ export default function UploadForm() {
 
   const handleUpload = async () => {
     if (!file) {
-      fileInputRef.current?.click()
-      return
+      fileInputRef.current?.click();
+      return;
     }
     
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setError("Only PDF files are supported")
-      return
-    }
-    
-    setLoading(true)
-    setError(null)
-    setUploadProgress(0)
-  
-    const formData = new FormData()
-    formData.append('file', file)
-  
+    setLoading(true);
+    setError(null);
+    setUploadProgress(0);
+    setProcessingProgress(0);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
     try {
-      // Use XMLHttpRequest for progress tracking
-      const response = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-        
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const progress = Math.round((event.loaded / event.total) * 100)
-            setUploadProgress(progress)
-          }
-        })
-  
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(JSON.parse(xhr.responseText))
-          } else {
-            reject(new Error(`Server responded with status: ${xhr.status}`))
-          }
-        })
-  
-        xhr.addEventListener('error', () => {
-          reject(new Error('Network error occurred'))
-        })
-  
-        xhr.open('POST', 'http://127.0.0.1:8000/api/process')
-        xhr.send(formData)
-      })
-  
-      // Process the response
-      const data = response as any
-      console.log("API Response:", data)
-      
-      if (data.income_statement && Object.keys(data.income_statement).length > 0) {
-        setResponse(data)
-      } else {
-        throw new Error("No valid income statement data returned")
+      // First upload the file
+      const uploadResponse = await fetch('http://127.0.0.1:8000/api/process', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
       }
+
+      const data = await uploadResponse.json();
       
+      // Start listening for processing progress
+      const eventSource = new EventSource(`http://127.0.0.1:8000/api/progress/${data.task_id}`);
+      
+      eventSource.onmessage = (event) => {
+        const progressData = JSON.parse(event.data);
+        setProcessingProgress(progressData.progress);
+        setProcessingPhase(progressData.phase);
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        setProcessingProgress(100);
+      };
+
+      // Update your state with the response data
+      if (data.income_statement && Object.keys(data.income_statement).length > 0) {
+        setResponse(data);
+      } else {
+        throw new Error("No valid income statement data returned");
+      }
+
     } catch (error) {
-      console.error("Error during upload:", error)
-      setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
+      console.error("Error during processing:", error);
+      setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
-      setLoading(false)
-      setUploadProgress(0)
+      setLoading(false);
     }
   }
 
@@ -115,20 +108,43 @@ export default function UploadForm() {
             >
               {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF and Analyze'}
             </button>
+
+            {/* Progress bar with improved styling and animation */}
+            {uploadProgress > 0 && uploadProgress < 100 && (
+              <div className="mt-4">
+                <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-purple-600 h-full rounded-full transition-all duration-300 ease-in-out"
+                    style={{ 
+                      width: `${uploadProgress}%`,
+                      transition: 'width 0.3s ease-in-out'
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-gray-400 text-center mt-1">
+                  Uploading: {Math.round(uploadProgress)}%
+                </div>
+              </div>
+            )}
+
+            {/* Processing progress bar */}
+            {processingProgress > 0 && (
+              <div className="mt-4">
+                <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-purple-600 h-full rounded-full transition-all duration-300 ease-in-out"
+                    style={{ 
+                      width: `${processingProgress}%`,
+                      transition: 'width 0.3s ease-in-out'
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-gray-400 text-center mt-1">
+                  {processingPhase}: {Math.round(processingProgress)}%
+                </div>
+              </div>
+            )}
           </div>
-          {uploadProgress > 0 && (
-          <div className="mt-4">
-            <div className="w-full bg-gray-700 rounded-full h-2 dark:bg-gray-700">
-               <div
-                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-      />
-    </div>
-    <div className="text-xs text-gray-400 text-center mt-1">
-      {uploadProgress}%
-    </div>
-  </div>
-)}
           {error && (
             <div className="mt-4 p-3 bg-red-900 bg-opacity-30 text-red-200 rounded-md border border-red-500 border-opacity-30">
               {error}
