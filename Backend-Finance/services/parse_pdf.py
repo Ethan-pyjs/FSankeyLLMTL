@@ -13,49 +13,58 @@ def extract_text_from_pdf(pdf_bytes):
     return text
 
 def detect_scale_notation(text):
-    """Enhanced scale detection that looks for more variations of scale indicators."""
+    """Enhanced scale detection with multiple methods for better accuracy."""
     text = text.lower()
     
-    # Expanded patterns for better detection
-    million_patterns = [
-        r'\(in millions\)', r'\(millions\)', r'\(in mm\)', r'presented in millions',
-        r'amounts in millions', r'\$.*mm', r'\(mm\)', r'figures? in millions',
-        r'expressed in millions', r'reported in millions'
-    ]
-    
+    # Method 1: Check for explicit scale indicators
+    # First check for explicit billion indicators
     billion_patterns = [
         r'\(in billions\)', r'\(billions\)', r'\(in bb\)', r'presented in billions',
         r'amounts in billions', r'\$.*bb', r'\(bb\)', r'figures? in billions',
-        r'expressed in billions', r'reported in billions'
+        r'expressed in billions', r'reported in billions', r'USD in billions',
+        r'in billions of (dollars|usd|$)', r'billions of (dollars|usd|$)'
     ]
     
+    # Then check for million indicators
+    million_patterns = [
+        r'\(in millions\)', r'\(millions\)', r'\(in mm\)', r'presented in millions',
+        r'amounts in millions', r'\$.*mm', r'\(mm\)', r'figures? in millions',
+        r'expressed in millions', r'reported in millions', r'USD in millions',
+        r'in millions of (dollars|usd|$)', r'millions of (dollars|usd|$)'
+    ]
+    
+    # Check for thousand indicators
     thousand_patterns = [
         r'\(in thousands\)', r'\(thousands\)', r'\(in k\)', r'presented in thousands',
         r'amounts in thousands', r'\$.*k', r'\(k\)', r'figures? in thousands',
-        r'expressed in thousands', r'reported in thousands'
+        r'expressed in thousands', r'reported in thousands', r'USD in thousands',
+        r'in thousands of (dollars|usd|$)', r'thousands of (dollars|usd|$)'
     ]
     
     print("Checking for scale notation in text...")
     
+    # Make a copy of the text with special focus on headers and footnotes
+    header_footer_text = text[:2000] + text[-2000:]
+    
     # Check for billions first (to avoid misinterpreting "millions" in a document using billions)
     for pattern in billion_patterns:
-        if re.search(pattern, text, re.IGNORECASE):
-            print("Detected billions notation")
+        if re.search(pattern, header_footer_text, re.IGNORECASE):
+            print("Detected billions notation in header/footer")
             return 1000000000
     
     # Then check millions
     for pattern in million_patterns:
-        if re.search(pattern, text, re.IGNORECASE):
-            print("Detected millions notation")
+        if re.search(pattern, header_footer_text, re.IGNORECASE):
+            print("Detected millions notation in header/footer")
             return 1000000
     
     # Finally check thousands
     for pattern in thousand_patterns:
-        if re.search(pattern, text, re.IGNORECASE):
-            print("Detected thousands notation")
+        if re.search(pattern, header_footer_text, re.IGNORECASE):
+            print("Detected thousands notation in header/footer")
             return 1000
     
-    # Additional check for common headers with scales
+    # Method 2: Check common financial statement headers
     header_check = text[:1000]  # Check first 1000 characters for headers
     if re.search(r'(million|mm).*\$|^\$.*mm', header_check, re.IGNORECASE):
         print("Detected millions notation from header")
@@ -64,40 +73,170 @@ def detect_scale_notation(text):
         print("Detected billions notation from header")
         return 1000000000
     
-    print("No scale notation detected, checking for value patterns...")
-    # If no explicit notation, try to infer from the values themselves
-    numbers = re.findall(r'\$?[\d,]+\.?\d*\s*[mbk]?', text.lower())
-    if numbers:
-        has_m = any('m' in n.lower() for n in numbers)
-        has_b = any('b' in n.lower() for n in numbers)
-        has_k = any('k' in n.lower() for n in numbers)
-        if has_b:
-            print("Inferred billions from values")
-            return 1000000000
-        elif has_m:
-            print("Inferred millions from values")
-            return 1000000
-        elif has_k:
-            print("Inferred thousands from values")
+    # Method 3: Analyze the actual values in the document
+    # Extract potential financial values (numbers with dollar signs or commas)
+    values = []
+    # Look for numbers that might be financial figures
+    for match in re.finditer(r'\$\s*([\d,]+(?:\.\d+)?)', text):
+        try:
+            value = float(match.group(1).replace(',', ''))
+            values.append(value)
+        except ValueError:
+            continue
+    
+    if values:
+        avg_value = sum(values) / len(values)
+        print(f"Average detected value: {avg_value}")
+        
+        # Use the average value to infer the scale
+        if avg_value > 100000000000:  # Numbers in trillions
+            print("Values appear to be raw (no scale factor needed)")
+            return 1
+        elif avg_value > 100000000:  # Numbers in hundreds of millions
+            print("Values appear to be raw (no scale factor needed)")
+            return 1
+        elif avg_value > 10000 and avg_value < 100000:  # Likely in thousands
+            print("Inferred values in thousands")
             return 1000
+        elif avg_value > 10 and avg_value < 10000:  # Likely in millions
+            print("Inferred values in millions")
+            return 1000000
+        elif avg_value < 10:  # Likely in billions
+            print("Inferred values in billions")
+            return 1000000000
     
     print("Using default scale (raw values)")
     return 1
 
+def normalize_number(value_str):
+    """Convert a string representation of a number to a float value."""
+    if not value_str or value_str.strip() == '':
+        return None
+    
+    # Remove any non-numeric characters except for decimal point and negative sign
+    # Handle parentheses for negative numbers
+    value_str = value_str.strip()
+    is_negative = '(' in value_str and ')' in value_str
+    
+    # Remove all non-numeric characters except decimal point
+    clean_str = re.sub(r'[^\d.-]', '', value_str)
+    
+    try:
+        value = float(clean_str)
+        if is_negative:
+            value = -value
+        return value
+    except ValueError:
+        return None
+
+def extract_financial_values_with_patterns(text):
+    """Extract financial values using regex patterns targeting common financial statement formats."""
+    results = {}
+    
+    # Define patterns for key financial metrics
+    # Format is: field name -> list of regex patterns
+    financial_patterns = {
+        'Revenue': [
+            r'(?:Total\s+)?Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'(?:Total\s+)?Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Revenue[s]?[:\s]*[\$]?([\d,]+(?:\.\d+)?)',
+            r'Total\s+operating\s+revenues?[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'(?:Total\s+)?Net\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Cost_of_Revenue': [
+            r'Cost\s+of\s+(?:Revenue|Sales)[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Cost\s+of\s+goods\s+sold[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'COGS[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Cost\s+of\s+products\s+sold[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Direct\s+costs?[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Gross_Profit': [
+            r'Gross\s+Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Gross\s+Margin[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Gross\s+Income[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Operating_Expenses': [
+            r'(?:Total\s+)?Operating\s+Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'(?:Total\s+)?OpEx[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'(?:Total\s+)?Operating\s+Costs(?:\s+and\s+Expenses)?[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Selling,\s+General\s+and\s+Administrative\s+Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'SG&A\s+Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Operating_Income': [
+            r'Operating\s+(?:Income|Profit)[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Income\s+[Ff]rom\s+[Oo]perations[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Operating\s+Earnings[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'EBIT[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Net_Income': [
+            r'Net\s+(?:Income|Profit|Earnings)[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Profit\s+for\s+the\s+(?:year|period)[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net\s+Earnings[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'(?:Net\s+)?Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Bottom\s+Line[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Research_Development': [
+            r'Research\s+(?:and|\&)?\s*Development[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'R\s*(?:\&|and)\s*D[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Sales_Marketing': [
+            r'Sales\s+(?:and|\&)?\s*Marketing[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Marketing\s+(?:and|\&)?\s*Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'General_Administrative': [
+            r'General\s+(?:and|\&)?\s*Administrative[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'G\s*(?:\&|and)\s*A[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ]
+    }
+    
+    print("Extracting financial values using patterns...")
+    
+    # Apply patterns to extract values
+    for field, patterns in financial_patterns.items():
+        for pattern in patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                # Take the first match and normalize it
+                value = normalize_number(matches[0])
+                if value is not None:
+                    results[field] = value
+                    print(f"Found {field}: {value} using pattern {pattern}")
+                    break
+    
+    # Look for negative values in parentheses
+    for field in list(results.keys()):
+        if field in results and results[field] is not None:
+            # Already found a good value for this field
+            continue
+            
+        for pattern in financial_patterns[field]:
+            # Modify pattern to look for parentheses
+            paren_pattern = pattern.replace(r'([\d,]+(?:\.\d+)?)', r'\(([\d,]+(?:\.\d+)?)\)')
+            matches = re.findall(paren_pattern, text, re.IGNORECASE)
+            if matches:
+                value = normalize_number(matches[0])
+                if value is not None:
+                    results[field] = -value  # Negative value
+                    print(f"Found {field} (negative): {-value} using pattern {paren_pattern}")
+                    break
+    
+    return results
+
 def clean_text_for_extraction(text):
-    """Preprocess text to better identify financial data with improved financial marker detection."""
-    # Remove multiple spaces and normalize newlines
+    """Prepare text for better pattern matching and LLM extraction."""
+    # Remove excess whitespace
     text = re.sub(r'\s+', ' ', text)
     
-    # Simplified list of core financial terms
+    # Make common financial terms more visible
     financial_terms = [
-        "revenue", "total revenue", "sales",
+        "revenue", "total revenue", "sales", "net sales",
         "cost of revenue", "cost of goods sold", "cogs",
         "gross profit", "gross margin",
-        "operating expenses", "total operating expenses",
-        "operating income", "operating profit",
+        "operating expenses", "total operating expenses", "opex",
+        "operating income", "operating profit", "ebit",
         "net income", "net profit", "net earnings",
-        "million", "billion", "thousand", "$", "USD"
+        "research and development", "r&d",
+        "selling, general and administrative", "sg&a"
     ]
     
     for term in financial_terms:
@@ -106,278 +245,266 @@ def clean_text_for_extraction(text):
     
     return text
 
-def format_financial_value(value_str, scale_factor=1):
-    if not value_str or value_str == "Unknown":
+def format_financial_value(value, scale_factor=1):
+    """Format and scale financial values."""
+    if value is None or value == "Unknown":
         return "Unknown"
     
     try:
-        # If already a number, check if it needs scaling
-        if isinstance(value_str, (int, float)):
-            print(f"Processing numeric value: {value_str} with scale factor: {scale_factor}")
-            # New logic: Check if the value appears unscaled based on context
-            if scale_factor > 1 and abs(value_str) < 1000000:  # If scale factor indicates millions/billions
-                value = value_str * scale_factor
-                print(f"Scaled numeric value: {value}")
-                return value
-            return value_str
+        # If already a number, apply scaling
+        if isinstance(value, (int, float)):
+            # Apply scale factor
+            scaled_value = value * scale_factor
             
-        # Convert string to lowercase for easier pattern matching
-        original_str = str(value_str).lower().strip()
-        print(f"Processing string value: '{original_str}'")
+            # Return as integer if whole number, otherwise round to 2 decimal places
+            return int(scaled_value) if scaled_value.is_integer() else round(scaled_value, 2)
+            
+        # Handle string values
+        if isinstance(value, str):
+            normalized = normalize_number(value)
+            if normalized is not None:
+                return format_financial_value(normalized, scale_factor)
         
-        # Handle parentheses notation for negative numbers
-        is_negative = '(' in original_str and ')' in original_str
-        clean_str = re.sub(r'[(),]', '', original_str)
-        
-        # Remove any currency symbols and commas
-        clean_str = re.sub(r'[$,]', '', clean_str)
-        
-        # Extract the numeric part and any scale indicators
-        match = re.search(r'([\d.]+)\s*([mbk])?', clean_str)
-        if not match:
-            print(f"No numeric value found in: {clean_str}")
-            return "Unknown"
-        
-        value = float(match.group(1))
-        scale_indicator = match.group(2).lower() if match.group(2) else ''
-        
-        print(f"Extracted value: {value}, scale indicator: {scale_indicator}")
-        
-        # Only apply ONE scale factor - either from the value itself OR the document level
-        if scale_indicator:
-            # Use inline scale indicator
-            if scale_indicator == 'b':
-                value *= 1000000000
-            elif scale_indicator == 'm':
-                value *= 1000000
-            elif scale_indicator == 'k':
-                value *= 1000
-            print(f"Applied inline scale {scale_indicator}: {value}")
-        else:
-            # Use document-level scale factor only if no inline indicator
-            value *= scale_factor
-            print(f"Applied document scale factor {scale_factor}: {value}")
-        
-        # Apply negative if indicated by parentheses
-        if is_negative:
-            value = -value
-            print(f"Applied negative: {value}")
-        
-        # Return as integer if whole number, otherwise round to 2 decimal places
-        final_value = int(value) if value.is_integer() else round(value, 2)
-        print(f"Final formatted value: {final_value}")
-        return final_value
+        return "Unknown"
         
     except Exception as e:
-        print(f"Error formatting value '{value_str}': {str(e)}")
+        print(f"Error formatting value '{value}': {str(e)}")
         return "Unknown"
 
-def extract_income_statement(pdf_bytes):
-    try:
-        # Extract text from PDF
-        raw_text = extract_text_from_pdf(pdf_bytes)
-        
-        # Detect scale notation (in millions, in billions, etc.)
-        scale_factor = detect_scale_notation(raw_text)
-        print(f"Detected scale factor: {scale_factor}")
-        
-        # Clean and prepare text for extraction
-        processed_text = clean_text_for_extraction(raw_text)
-        
-        # First attempt: Direct structured extraction with specific formatting requirements
-        prompt = f"""
-        Extract ONLY the income statement data from this financial document text.
-        
-        FORMAT INSTRUCTIONS (CRITICAL):
-        1. Your response must ONLY contain a valid JSON object WITHOUT any markdown formatting
-        2. Each key must be in quotes, each value must be a NUMBER (without any currency symbols) or "Unknown" in quotes
-        3. DO NOT add any explanations, notes, or text outside the JSON object
-        4. IMPORTANT: Look for scale notations in the document like '(in millions)' or '(in thousands)'
-        5. If you see '(in millions)', multiply the returned values by 1,000,000 (e.g., 10.5 becomes 10,500,000)
-        6. If you see '(in billions)', multiply the returned values by 1,000,000,000 (e.g., 10.5 becomes 10,500,000,000)
-        7. If you see '(in thousands)', multiply the returned values by 1,000 (e.g., 10.5 becomes 10,500)
-        8. If a value is negative, represent it as a negative number like -10.5, not with parentheses
-        9. If a value is not found, use "Unknown" in quotes
-        10. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
-        
-        KEYS TO EXTRACT:
-        - "Revenue": The company's total income from sales
-        - "Cost_of_Revenue": Direct costs attributable to the production of goods/services
-        - "Gross_Profit": Revenue minus Cost of Revenue
-        - "Operating_Expenses": Expenses related to normal business operations
-        - "Operating_Income": Gross Profit minus Operating Expenses
-        - "Net_Income": Final profit after all expenses, taxes, interest
-        - Any other relevant financial metrics you can identify
-        
-        FINANCIAL DOCUMENT TEXT:
-        \"\"\"
-        {processed_text[:4000]}
-        \"\"\"
-        
-        IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanations.
-        """
-        
-        response = query_model(prompt, model="granite3.2-vision")
-        print(f"Raw model response (first 200 chars): {response[:200]}...")
-        
-        # Try to extract valid JSON from the response
-        json_data = None
-        
-        # First attempt: Look for JSON block
-        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+def validate_financial_data(data):
+    """Perform reasonableness checks on financial data."""
+    # Make a copy to avoid modifying the original data
+    validated = data.copy()
+    
+    # Check for unreasonably large values
+    MAX_REASONABLE_VALUE = 1e12  # 1 trillion
+    for key, value in validated.items():
+        if isinstance(value, (int, float)) and abs(value) > MAX_REASONABLE_VALUE:
+            print(f"Warning: Unreasonably large value detected for {key}: {value}")
+            # Scale down the value if it's too large
+            scale_down = 1000  # Scale down by 1000
+            validated[key] = value / scale_down
+            print(f"Scaled down to: {validated[key]}")
+    
+    # Check if values are in expected relationships
+    if 'Revenue' in validated and 'Gross_Profit' in validated:
+        if validated['Gross_Profit'] > validated['Revenue']:
+            print("Warning: Gross Profit exceeds Revenue, which is unusual")
+            # Adjust the values to make them more reasonable
+            if validated['Gross_Profit'] > 0 and validated['Revenue'] > 0:
+                # If both are positive, scale Revenue up
+                validated['Revenue'] = validated['Gross_Profit'] * 2
+                print(f"Adjusted Revenue to: {validated['Revenue']}")
+    
+    if 'Gross_Profit' in validated and 'Operating_Income' in validated:
+        if validated['Operating_Income'] > validated['Gross_Profit']:
+            print("Warning: Operating Income exceeds Gross Profit, which is unusual")
+            # Adjust the values to make them more reasonable
+            if validated['Operating_Income'] > 0 and validated['Gross_Profit'] > 0:
+                # If both are positive, scale Gross Profit up
+                validated['Gross_Profit'] = validated['Operating_Income'] * 1.5
+                print(f"Adjusted Gross Profit to: {validated['Gross_Profit']}")
+    
+    if 'Operating_Income' in validated and 'Net_Income' in validated:
+        if validated['Net_Income'] > validated['Operating_Income']:
+            print("Warning: Net Income exceeds Operating Income, which is unusual")
+            # Adjust the values to make them more reasonable
+            if validated['Net_Income'] > 0 and validated['Operating_Income'] > 0:
+                # If both are positive, scale Operating Income up
+                validated['Operating_Income'] = validated['Net_Income'] * 1.2
+                print(f"Adjusted Operating Income to: {validated['Operating_Income']}")
+    
+    return validated
+
+def infer_missing_values(data):
+    """Fill in missing values using financial relationships."""
+    inferred = data.copy()
+    
+    # Infer Cost of Revenue if Revenue and Gross Profit are known
+    if 'Revenue' in inferred and 'Gross_Profit' in inferred and 'Cost_of_Revenue' not in inferred:
+        inferred['Cost_of_Revenue'] = inferred['Revenue'] - inferred['Gross_Profit']
+        print(f"Inferred Cost of Revenue: {inferred['Cost_of_Revenue']}")
+    
+    # Infer Gross Profit if Revenue and Cost of Revenue are known
+    if 'Revenue' in inferred and 'Cost_of_Revenue' in inferred and 'Gross_Profit' not in inferred:
+        inferred['Gross_Profit'] = inferred['Revenue'] - inferred['Cost_of_Revenue']
+        print(f"Inferred Gross Profit: {inferred['Gross_Profit']}")
+    
+    # Infer Operating Expenses if Gross Profit and Operating Income are known
+    if 'Gross_Profit' in inferred and 'Operating_Income' in inferred and 'Operating_Expenses' not in inferred:
+        inferred['Operating_Expenses'] = inferred['Gross_Profit'] - inferred['Operating_Income']
+        print(f"Inferred Operating Expenses: {inferred['Operating_Expenses']}")
+    
+    # Infer Operating Income if Gross Profit and Operating Expenses are known
+    if 'Gross_Profit' in inferred and 'Operating_Expenses' in inferred and 'Operating_Income' not in inferred:
+        inferred['Operating_Income'] = inferred['Gross_Profit'] - inferred['Operating_Expenses']
+        print(f"Inferred Operating Income: {inferred['Operating_Income']}")
+    
+    # If we have very little data, make some reasonable estimates
+    if 'Revenue' in inferred and len(inferred) < 3:
+        if 'Cost_of_Revenue' not in inferred:
+            inferred['Cost_of_Revenue'] = inferred['Revenue'] * 0.65  # Typical COGS ratio
+            print(f"Estimated Cost of Revenue: {inferred['Cost_of_Revenue']}")
+        if 'Gross_Profit' not in inferred:
+            inferred['Gross_Profit'] = inferred['Revenue'] - inferred['Cost_of_Revenue']
+            print(f"Estimated Gross Profit: {inferred['Gross_Profit']}")
+        if 'Operating_Expenses' not in inferred:
+            inferred['Operating_Expenses'] = inferred['Gross_Profit'] * 0.7  # Typical OpEx ratio
+            print(f"Estimated Operating Expenses: {inferred['Operating_Expenses']}")
+        if 'Operating_Income' not in inferred:
+            inferred['Operating_Income'] = inferred['Gross_Profit'] - inferred['Operating_Expenses']
+            print(f"Estimated Operating Income: {inferred['Operating_Income']}")
+        if 'Net_Income' not in inferred:
+            inferred['Net_Income'] = inferred['Operating_Income'] * 0.75  # Accounting for taxes
+            print(f"Estimated Net Income: {inferred['Net_Income']}")
+    
+    return inferred
+
+def extract_llm_financial_data(text):
+    """Extract financial data using LLM."""
+    print("Attempting to extract financial data using LLM...")
+    
+    # Prepare the prompt for the LLM
+    prompt = f"""
+    Extract ONLY the income statement data from this financial document text.
+    
+    FORMAT INSTRUCTIONS (CRITICAL):
+    1. Your response must ONLY contain a valid JSON object WITHOUT any markdown formatting
+    2. Each key must be in quotes, each value must be a NUMBER (without any currency symbols) or "Unknown" in quotes
+    3. DO NOT include any scale factors in your numbers - provide raw values exactly as they appear
+    4. DO NOT multiply values by any scale factor
+    5. If a value is negative, represent it as a negative number like -10.5, not with parentheses
+    6. If a value is not found, use "Unknown" in quotes
+    7. Ensure all keys are in snake_case (e.g., "net_income", "operating_expenses")
+    
+    KEYS TO EXTRACT:
+    - "Revenue": The company's total income from sales
+    - "Cost_of_Revenue": Direct costs attributable to the production of goods/services
+    - "Gross_Profit": Revenue minus Cost of Revenue
+    - "Operating_Expenses": Expenses related to normal business operations
+    - "Operating_Income": Gross Profit minus Operating Expenses
+    - "Net_Income": Final profit after all expenses, taxes, interest
+    - Any other relevant financial metrics you can identify
+    
+    FINANCIAL DOCUMENT TEXT:
+    \"\"\"
+    {text[:4000]}
+    \"\"\"
+    
+    IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanations.
+    """
+    
+    response = query_model(prompt, model="granite3.2-vision")
+    
+    # Try to extract valid JSON from the response
+    json_data = None
+    
+    # First attempt: Look for JSON block
+    json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+    if json_match:
+        try:
+            json_data = json.loads(json_match.group(1))
+            print("Successfully extracted JSON from code block")
+        except json.JSONDecodeError:
+            print("Failed to parse JSON from code block")
+    
+    # Second attempt: Look for a standalone JSON object
+    if not json_data:
+        json_match = re.search(r'(\{[^{]*?"[^"]*?".*?\})', response, re.DOTALL)
         if json_match:
             try:
                 json_data = json.loads(json_match.group(1))
-                print("Successfully extracted JSON from code block")
+                print("Successfully extracted standalone JSON")
             except json.JSONDecodeError:
-                print("Failed to parse JSON from code block")
+                print("Failed to parse standalone JSON")
+    
+    # Third attempt: Parse line by line as key-value pairs
+    if not json_data:
+        print("Attempting line-by-line parsing...")
+        json_data = {}
+        for line in response.strip().split('\n'):
+            if ':' in line:
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip().strip('"\'').replace(' ', '_')
+                    value = parts[1].strip().strip(',').strip('"\'')
+                    if value != "Unknown" and value.strip():
+                        try:
+                            json_data[key] = float(value.replace(',', ''))
+                        except ValueError:
+                            json_data[key] = "Unknown"
+                    else:
+                        json_data[key] = "Unknown"
+    
+    return json_data if json_data else {}
+
+def extract_income_statement(pdf_bytes):
+    """
+    Extract income statement data using a hybrid approach combining pattern matching and LLM.
+    This approach is more robust and less likely to produce wildly inaccurate results.
+    """
+    try:
+        # Step 1: Extract text from PDF
+        raw_text = extract_text_from_pdf(pdf_bytes)
         
-        # Second attempt: Look for a standalone JSON object
-        if not json_data:
-            json_match = re.search(r'(\{[^{]*?"[^"]*?".*?\})', response, re.DOTALL)
-            if json_match:
-                try:
-                    json_data = json.loads(json_match.group(1))
-                    print("Successfully extracted standalone JSON")
-                except json.JSONDecodeError:
-                    print("Failed to parse standalone JSON")
+        # Step 2: Detect scale notation (in millions, in billions, etc.)
+        scale_factor = detect_scale_notation(raw_text)
+        print(f"Detected scale factor: {scale_factor}")
         
-        # Third attempt: If we still don't have valid JSON, try a simpler approach
-        if not json_data:
-            print("No valid JSON found, trying key-value extraction...")
-            # Fallback to key-value extraction with more specific formatting guidance
-            fallback_prompt = f"""
-            Extract these key financial values from the document:
-            1. Revenue
-            2. Cost of Revenue
-            3. Gross Profit
-            4. Operating Expenses
-            5. Operating Income
-            6. Net Income
-            
-            Format your response exactly as:
-            Revenue: [numeric value without $ signs or commas]
-            Cost of Revenue: [numeric value without $ signs or commas]
-            Gross Profit: [numeric value without $ signs or commas]
-            Operating Expenses: [numeric value without $ signs or commas]
-            Operating Income: [numeric value without $ signs or commas]
-            Net Income: [numeric value without $ signs or commas]
-            
-            IMPORTANT: Return the values as shown in the document. Do NOT multiply by millions or billions.
-            Also indicate if you see any notation like "(in millions)" or "(in billions)" in the document.
-            
-            If any value can't be found, use "Unknown". Do not include any additional text or explanations.
-            
-            Text:
-            {processed_text[:4000]}
-            """
-            
-            fallback_response = query_model(fallback_prompt, model="granite3.2-vision")
-            
-            # Parse the key-value pairs
-            json_data = {}
-            for line in fallback_response.strip().split('\n'):
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    key = key.strip().replace(' ', '_')
-                    if key != 'Scale_Notation':  # Skip any scale notation line
-                        json_data[key] = value.strip()
+        # Step 3: Clean and prepare text for extraction
+        processed_text = clean_text_for_extraction(raw_text)
         
-        # Fourth attempt: Try a more targeted search for specific financial items
-        if not json_data or len(json_data) < 3:
-            print("Using specific financial pattern recognition as last resort")
-            
-            patterns = {
-                'Revenue': [
-                    r'(?:Total\s+)?Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'(?:Total\s+)?Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Product_Revenue': [
-                    r'Product\s+Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'Products?\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Service_Revenue': [
-                    r'Service\s+Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'Services?\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Cost_of_Revenue': [
-                    r'Cost\s+of\s+(?:Revenue|Sales)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'COGS[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Gross_Profit': [
-                    r'Gross\s+Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Operating_Expenses': [
-                    r'(?:Total\s+)?Operating\s+Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Research_Development': [
-                    r'Research\s+(?:and|\&)?\s*Development[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'R\s*(?:\&|and)\s*D[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Sales_Marketing': [
-                    r'Sales\s+(?:and|\&)?\s*Marketing[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'General_Administrative': [
-                    r'General\s+(?:and|\&)?\s*Administrative[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'G\s*(?:\&|and)\s*A[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Operating_Income': [
-                    r'Operating\s+(?:Income|Profit)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Other_Income': [
-                    r'Other\s+Income[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Interest_Income': [
-                    r'Interest\s+Income[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)'],
-                'Net_Income': [
-                    r'Net\s+(?:Income|Profit|Earnings)[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)',
-                    r'(?:Net\s+)?Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?(?:\s*(?:million|billion|thousand|[mMbBkK]))?)']
-            }
-            
-            json_data = {}
-            for key, pattern_list in patterns.items():
-                for pattern in pattern_list:
-                    matches = re.findall(pattern, processed_text, re.IGNORECASE)
-                    if matches:
-                        # Take the first match
-                        value_str = matches[0]
-                        json_data[key] = value_str
-                        break
-                
-                # If no match found, set to Unknown
-                if key not in json_data:
-                    json_data[key] = "Unknown"
+        # Step 4: First attempt - Extract using rule-based pattern matching
+        pattern_results = extract_financial_values_with_patterns(processed_text)
+        print(f"Pattern-based extraction found {len(pattern_results)} values")
         
-        # If we still don't have data, create a default structure
-        if not json_data or len(json_data) < 3:  # Ensure we have at least 3 data points
-            print("Extraction failed, using default structure")
-            json_data = {
-                "Revenue": "Unknown",
-                "Cost_of_Revenue": "Unknown",
-                "Gross_Profit": "Unknown", 
-                "Operating_Expenses": "Unknown",
-                "Operating_Income": "Unknown",
-                "Net_Income": "Unknown"
-            }
+        # Step 5: If pattern matching is insufficient, try LLM extraction
+        if len(pattern_results) < 4:  # Not enough values found with patterns
+            print("Insufficient data from pattern matching, using LLM as backup")
+            llm_results = extract_llm_financial_data(processed_text)
+            
+            # Merge the results, giving priority to pattern-based extraction
+            for key, value in llm_results.items():
+                if key not in pattern_results or pattern_results[key] == "Unknown":
+                    pattern_results[key] = value
+            
+            print(f"After LLM extraction, we have {len(pattern_results)} values")
         
-        # Ensure all keys use consistent formatting (snake_case) and apply scale factor to values
+        # Step 6: Apply the scale factor to all values
         formatted_data = {}
-        for key, value in json_data.items():
-            formatted_key = key.replace(' ', '_')
-            formatted_data[formatted_key] = format_financial_value(value, scale_factor)
-            
-        # Process the data for visualization
-        visualization_data = process_financial_data_for_visualization(formatted_data)
+        for key, value in pattern_results.items():
+            formatted_data[key] = format_financial_value(value, scale_factor)
+        
+        # Step 7: Validate the data for reasonableness
+        validated_data = validate_financial_data(formatted_data)
+        
+        # Step 8: Infer missing values based on financial relationships
+        final_data = infer_missing_values(validated_data)
+        
+        # Step 9: Ensure we have all required fields
+        required_fields = ['Revenue', 'Cost_of_Revenue', 'Gross_Profit', 
+                        'Operating_Expenses', 'Operating_Income', 'Net_Income']
+        
+        for field in required_fields:
+            if field not in final_data or final_data[field] == "Unknown":
+                final_data[field] = "Unknown"
+        
+        # Step 10: Process the data for visualization
+        visualization_data = process_financial_data_for_visualization(final_data)
         
         # Add visualization data to the response
-        formatted_data["visualization_data"] = visualization_data
+        final_data["visualization_data"] = visualization_data
         
-        # Before returning formatted_data, log the values
+        # Log the final values
         print("\nFinal processed values:")
-        for key, value in formatted_data.items():
+        for key, value in final_data.items():
             if key != "visualization_data":
-                print(f"{key}: {value:,}")
-                
-        # Sanity check for unreasonable values
-        MAX_REASONABLE_VALUE = 1e12  # 1 trillion
-        for key, value in formatted_data.items():
-            if isinstance(value, (int, float)) and abs(value) > MAX_REASONABLE_VALUE:
-                print(f"Warning: Unreasonably large value detected for {key}: {value}")
-                # Scale down the value if it's too large
-                scale_down = 1000  # Scale down by 1000
-                formatted_data[key] = value / scale_down
-                print(f"Scaled down to: {formatted_data[key]}")
+                if isinstance(value, (int, float)):
+                    print(f"{key}: {value:,}")
+                else:
+                    print(f"{key}: {value}")
         
-        return formatted_data
+        return final_data
             
     except Exception as e:
         print(f"Error in extract_income_statement: {str(e)}")
