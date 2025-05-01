@@ -5,6 +5,7 @@ import FinancialStory from './FinancialStory'
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
   const [response, setResponse] = useState<any>(null)
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -17,13 +18,11 @@ export default function UploadForm() {
   }
 
   const handleUpload = async () => {
-    // If no file is selected, open the file dialog
     if (!file) {
       fileInputRef.current?.click()
       return
     }
     
-    // Check file extension
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError("Only PDF files are supported")
       return
@@ -31,24 +30,43 @@ export default function UploadForm() {
     
     setLoading(true)
     setError(null)
-
+    setUploadProgress(0)
+  
     const formData = new FormData()
     formData.append('file', file)
-      
+  
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/process`, {
-        method: 'POST',
-        body: formData,
+      // Use XMLHttpRequest for progress tracking
+      const response = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 100)
+            setUploadProgress(progress)
+          }
+        })
+  
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText))
+          } else {
+            reject(new Error(`Server responded with status: ${xhr.status}`))
+          }
+        })
+  
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error occurred'))
+        })
+  
+        xhr.open('POST', 'http://127.0.0.1:8000/api/process')
+        xhr.send(formData)
       })
-      
-      if (!res.ok) {
-        throw new Error(`Server responded with status: ${res.status}`)
-      }
-      
-      const data = await res.json()
+  
+      // Process the response
+      const data = response as any
       console.log("API Response:", data)
       
-      // Validate income statement data
       if (data.income_statement && Object.keys(data.income_statement).length > 0) {
         setResponse(data)
       } else {
@@ -60,6 +78,7 @@ export default function UploadForm() {
       setError(`Error processing file: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setLoading(false)
+      setUploadProgress(0)
     }
   }
 
@@ -97,7 +116,19 @@ export default function UploadForm() {
               {loading ? 'Processing...' : file ? 'Upload and Analyze' : 'Select PDF and Analyze'}
             </button>
           </div>
-          
+          {uploadProgress > 0 && (
+          <div className="mt-4">
+            <div className="w-full bg-gray-700 rounded-full h-2 dark:bg-gray-700">
+               <div
+                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+      />
+    </div>
+    <div className="text-xs text-gray-400 text-center mt-1">
+      {uploadProgress}%
+    </div>
+  </div>
+)}
           {error && (
             <div className="mt-4 p-3 bg-red-900 bg-opacity-30 text-red-200 rounded-md border border-red-500 border-opacity-30">
               {error}
