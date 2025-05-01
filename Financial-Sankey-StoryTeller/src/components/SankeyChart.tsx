@@ -26,7 +26,25 @@ interface SankeyChartProps {
     Operating_Expenses?: number | string;
     Operating_Income?: number | string;
     Net_Income?: number | string;
-    [key: string]: number | string | undefined;
+    visualization_data?: {
+      raw_data: Record<string, number>;
+      time_series: {
+        categories: string[];
+        values: number[];
+        percentages: Record<string, number>;
+      };
+      waterfall: Array<{
+        name: string;
+        value: number;
+      }>;
+      metrics: {
+        total_revenue: number;
+        total_costs: number;
+        final_profit: number;
+        margins: Record<string, number>;
+      };
+    };
+    [key: string]: any;
   };
 }
 

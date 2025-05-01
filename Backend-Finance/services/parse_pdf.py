@@ -299,12 +299,15 @@ def extract_income_statement(pdf_bytes):
         # Ensure all keys use consistent formatting (snake_case) and apply scale factor to values
         formatted_data = {}
         for key, value in json_data.items():
-            # Convert key to snake_case
-            formatted_key = key.replace(' ', '_').replace('-', '_')
-            
-            # Apply the scale factor to convert values according to document notation
+            formatted_key = key.replace(' ', '_')
             formatted_data[formatted_key] = format_financial_value(value, scale_factor)
             
+        # Process the data for visualization
+        visualization_data = process_financial_data_for_visualization(formatted_data)
+        
+        # Add visualization data to the response
+        formatted_data["visualization_data"] = visualization_data
+        
         return formatted_data
             
     except Exception as e:
@@ -316,5 +319,59 @@ def extract_income_statement(pdf_bytes):
             "Gross_Profit": "Unknown",
             "Operating_Expenses": "Unknown",
             "Operating_Income": "Unknown",
-            "Net_Income": "Unknown"
+            "Net_Income": "Unknown",
+            "visualization_data": None
+        }
+
+def process_financial_data_for_visualization(income_statement_data: dict) -> dict:
+    """
+    Process income statement data into a structured format for visualization.
+    Returns a dictionary containing different views of the data.
+    """
+    try:
+        # Convert all values to numeric, handling "Unknown" values
+        numeric_data = {}
+        for key, value in income_statement_data.items():
+            if value != "Unknown" and not isinstance(value, str):
+                numeric_data[key] = float(value)
+            else:
+                numeric_data[key] = 0
+
+        # Create time series format (even though we have one period)
+        time_series = {
+            "categories": list(numeric_data.keys()),
+            "values": list(numeric_data.values()),
+            "percentages": {
+                "gross_margin": (numeric_data.get("Gross_Profit", 0) / numeric_data.get("Revenue", 1)) * 100 if numeric_data.get("Revenue", 0) != 0 else 0,
+                "operating_margin": (numeric_data.get("Operating_Income", 0) / numeric_data.get("Revenue", 1)) * 100 if numeric_data.get("Revenue", 0) != 0 else 0,
+                "net_margin": (numeric_data.get("Net_Income", 0) / numeric_data.get("Revenue", 1)) * 100 if numeric_data.get("Revenue", 0) != 0 else 0
+            }
+        }
+
+        # Create waterfall data for showing how we get from revenue to net income
+        waterfall_data = [
+            {"name": "Revenue", "value": numeric_data.get("Revenue", 0)},
+            {"name": "Cost of Revenue", "value": -numeric_data.get("Cost_of_Revenue", 0)},
+            {"name": "Gross Profit", "value": numeric_data.get("Gross_Profit", 0)},
+            {"name": "Operating Expenses", "value": -numeric_data.get("Operating_Expenses", 0)},
+            {"name": "Operating Income", "value": numeric_data.get("Operating_Income", 0)},
+            {"name": "Net Income", "value": numeric_data.get("Net_Income", 0)}
+        ]
+
+        return {
+            "raw_data": numeric_data,
+            "time_series": time_series,
+            "waterfall": waterfall_data,
+            "metrics": {
+                "total_revenue": numeric_data.get("Revenue", 0),
+                "total_costs": numeric_data.get("Cost_of_Revenue", 0) + numeric_data.get("Operating_Expenses", 0),
+                "final_profit": numeric_data.get("Net_Income", 0),
+                "margins": time_series["percentages"]
+            }
+        }
+    except Exception as e:
+        print(f"Error processing financial data for visualization: {str(e)}")
+        return {
+            "raw_data": income_statement_data,
+            "error": f"Failed to process data for visualization: {str(e)}"
         }
