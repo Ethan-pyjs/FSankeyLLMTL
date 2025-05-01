@@ -257,30 +257,34 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     }
   }, [incomeStatement]);
   
-  // Format currency values for display
+  // Update the formatCurrency function
   const formatCurrency = (value: number) => {
-    if (value >= 1000000000) {
+    const absValue = Math.abs(value);
+    if (absValue >= 1000000000000) { // If value is in trillions
+      return `$${(value / 1000000000000).toFixed(1)}T`;
+    } else if (absValue >= 1000000000) { // If value is in billions
       return `$${(value / 1000000000).toFixed(1)}B`;
-    } else if (value >= 1000000) {
+    } else if (absValue >= 1000000) { // If value is in millions
       return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
+    } else if (absValue >= 1000) { // If value is in thousands
       return `$${(value / 1000).toFixed(1)}K`;
-    } else {
-      return `$${value.toFixed(0)}`;
     }
+    return `$${value.toFixed(0)}`;
   };
   
-  // Format currency for tooltip (more detailed)
+  // Also update the formatCurrencyDetailed function
   const formatCurrencyDetailed = (value: number) => {
-    if (value >= 1000000000) {
+    const absValue = Math.abs(value);
+    if (absValue >= 1000000000000) {
+      return `$${(value / 1000000000000).toFixed(2)} trillion`;
+    } else if (absValue >= 1000000000) {
       return `$${(value / 1000000000).toFixed(2)} billion`;
-    } else if (value >= 1000000) {
+    } else if (absValue >= 1000000) {
       return `$${(value / 1000000).toFixed(2)} million`;
-    } else if (value >= 1000) {
+    } else if (absValue >= 1000) {
       return `$${(value / 1000).toFixed(2)}k`;
-    } else {
-      return `$${value.toLocaleString()}`;
     }
+    return `$${value.toLocaleString()}`;
   };
 
   if (error) {

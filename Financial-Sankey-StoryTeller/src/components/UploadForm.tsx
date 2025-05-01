@@ -63,6 +63,19 @@ export default function UploadForm() {
     }
   }
 
+  const formatValue = (value: any): string => {
+    if (typeof value === 'number') {
+      // Format numbers as currency
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    }
+    return String(value);
+  };
+
   return (
     <div className="flex flex-col items-center w-full">
       <div className="w-full max-w-md mx-auto bg-black bg-opacity-40 p-6 md:p-8 rounded-lg shadow-xl border border-purple-500 border-opacity-20 backdrop-filter backdrop-blur-sm">
@@ -110,9 +123,33 @@ export default function UploadForm() {
             <div className="grid grid-cols-1 gap-6">
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Income Statement Data:</h2>
-                <pre className="bg-black bg-opacity-50 p-4 rounded text-sm overflow-x-auto max-h-60 text-gray-200">
-                  {JSON.stringify(response.income_statement, null, 2)}
-                </pre>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-purple-500 border-opacity-20">
+                        <th className="py-2 px-4 text-purple-200 font-semibold">Metric</th>
+                        <th className="py-2 px-4 text-purple-200 font-semibold">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(response.income_statement)
+                        .filter(([key]) => !key.includes('visualization_data')) // Exclude visualization data
+                        .map(([key, value]) => (
+                          <tr 
+                            key={key} 
+                            className="border-b border-purple-500 border-opacity-10 hover:bg-purple-900 hover:bg-opacity-20 transition-colors"
+                          >
+                            <td className="py-2 px-4 text-gray-300">
+                              {key.replace(/_/g, ' ')}
+                            </td>
+                            <td className="py-2 px-4 text-gray-200 font-mono">
+                              {formatValue(value)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">

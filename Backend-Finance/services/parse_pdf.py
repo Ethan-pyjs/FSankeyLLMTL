@@ -91,26 +91,17 @@ def clean_text_for_extraction(text):
 def format_financial_value(value_str, scale_factor=1):
     """
     Convert a string financial value to a numeric format.
-    Enhanced to handle more financial notation patterns and apply the correct scale factor.
-    
-    Args:
-        value_str: The string representation of the financial value
-        scale_factor: Multiplication factor based on document notation (millions, billions, etc.)
-    
-    Returns:
-        A numeric value or "Unknown" if conversion fails
     """
     if not value_str or value_str == "Unknown":
         return "Unknown"
         
     try:
-        # Check if string already represents a number (float or int)
+        # If already a number, return it directly without scaling
         if isinstance(value_str, (int, float)):
-            # Apply scale factor to numeric values
-            return value_str * scale_factor
+            return value_str  # Don't apply scale factor to already processed numbers
             
         # Handle parentheses notation for negative numbers: (123.45) → -123.45
-        original_str = value_str.lower()
+        original_str = str(value_str).lower()
         if '(' in original_str and ')' in original_str:
             value_str = '-' + re.sub(r'[()]', '', value_str)
         
@@ -122,35 +113,32 @@ def format_financial_value(value_str, scale_factor=1):
             
         value = float(clean_val)
         
-        # Check if there are inline indicators of scale in the value itself
-        # This handles cases where individual values have their own unit indicators
+        # Check for inline scale indicators FIRST
         if "billion" in original_str or "b" in original_str.split():
-            value *= 1000000000  # Raw value to absolute value
+            value *= 1000000000
         elif "million" in original_str or "m" in original_str.split():
-            value *= 1000000  # Raw value to absolute value
+            value *= 1000000
         elif "thousand" in original_str or "k" in original_str.split():
-            value *= 1000  # Raw value to absolute value
+            value *= 1000
         else:
-            # Apply the document-level scale factor if no inline indicator is found
+            # Only apply document-level scale factor if no inline indicator was found
             value *= scale_factor
             
-        # For the JSON output, we want actual integers rather than floats when possible
+        # Convert to integer if it's a whole number
         if value == int(value):
             return int(value)
-        else:
-            # Round to 2 decimal places for cleaner floating-point values
-            return round(value, 2)
+        return round(value, 2)
     except:
         return "Unknown"
 
 def extract_income_statement(pdf_bytes):
-    """Extract income statement data from PDF with improved robustness."""
     try:
         # Extract text from PDF
         raw_text = extract_text_from_pdf(pdf_bytes)
         
         # Detect scale notation (in millions, in billions, etc.)
         scale_factor = detect_scale_notation(raw_text)
+        print(f"Detected scale factor: {scale_factor}")
         
         # Clean and prepare text for extraction
         processed_text = clean_text_for_extraction(raw_text)
@@ -308,6 +296,11 @@ def extract_income_statement(pdf_bytes):
         # Add visualization data to the response
         formatted_data["visualization_data"] = visualization_data
         
+        # Before returning the formatted data, log the values
+        for key, value in formatted_data.items():
+            if key != "visualization_data":
+                print(f"Final {key}: {value}")
+                
         return formatted_data
             
     except Exception as e:
