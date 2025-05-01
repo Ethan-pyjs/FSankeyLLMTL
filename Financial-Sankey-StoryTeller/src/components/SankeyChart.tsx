@@ -316,6 +316,29 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     // Get the node's value from the payload or default to 0
     const nodeValue = payload.value || 0;
     
+    // Determine color based on the type of value and if it's positive/negative
+    const getNodeColor = (value: number, nodeName: string) => {
+      // For Revenue node
+      if (nodeName === 'Revenue') return '#10B981'; // Emerald-500
+      
+      // For Cost/Expense nodes
+      if (nodeName.includes('Cost') || nodeName.includes('Expenses')) {
+        return '#EF4444'; // Red-500
+      }
+      
+      // For Profit/Income nodes
+      if (value > 0) {
+        if (nodeName.includes('Net')) return '#059669'; // Emerald-600
+        if (nodeName.includes('Gross')) return '#34D399'; // Emerald-400
+        return '#6EE7B7'; // Emerald-300
+      } else {
+        return '#F87171'; // Red-400
+      }
+    };
+  
+    // Get color for this node
+    const nodeFillColor = getNodeColor(nodeValue, payload.name);
+    
     // Format the value for display
     const formattedValue = formatCurrency(nodeValue);
     
@@ -353,7 +376,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           y={y}
           width={width}
           height={height}
-          fill="#8B5CF6"
+          fill={nodeFillColor}
           fillOpacity={0.8}
         />
         {/* Node name label */}
@@ -400,33 +423,32 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
               data={data}
               node={<CustomNode />}
               link={{ 
-                stroke: "#4B5563",
-                strokeOpacity: 0.6,
-                fillOpacity: 0.9,
-                fill: "#6D28D9"
+              stroke: "#8B5CF6", // Purple color for links
+              strokeOpacity: 0.2,
+              fillOpacity: 0.5,
+              fill: "#8B5CF6" // Purple color for link fill
               }}
-              // Improved margins to keep everything in view with the added labels
               margin={{ top: 20, right: 100, bottom: 5, left: 50 }}
-              nodePadding={5} // Increased padding between nodes for value labels
+              nodePadding={5}
               nodeWidth={13}
               iterations={64}
             >
               <Tooltip 
-                formatter={(value: any, _name: any, props: any) => {
-                  // Use the absoluteValue if available for better display
-                  const displayValue = props.payload.absoluteValue !== undefined 
-                    ? props.payload.absoluteValue 
-                    : value;
-                  return formatCurrencyDetailed(displayValue);
-                }}
-                labelFormatter={(name) => `${name}`}
-                contentStyle={{ 
-                  backgroundColor: 'rgba(17, 24, 39, 0.95)', 
-                  border: '1px solid #8B5CF6',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  color: '#E5E7EB' 
-                }}
+              formatter={(value: any, _name: any, props: any) => {
+                // Use the absoluteValue if available for better display
+                const displayValue = props.payload.absoluteValue !== undefined 
+                ? props.payload.absoluteValue 
+                : value;
+                return formatCurrencyDetailed(displayValue);
+              }}
+              labelFormatter={(name) => `${name}`}
+              contentStyle={{ 
+                backgroundColor: 'rgba(17, 24, 39, 0.95)', 
+                border: '1px solid #8B5CF6', // Purple border for tooltip
+                borderRadius: '4px',
+                padding: '8px',
+                color: '#E5E7EB' 
+              }}
               />
             </Sankey>
           </ResponsiveContainer>
