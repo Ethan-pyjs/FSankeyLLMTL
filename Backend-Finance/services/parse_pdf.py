@@ -141,7 +141,11 @@ def extract_financial_values_with_patterns(text):
             r'(?:Total\s+)?Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
             r'Revenue[s]?[:\s]*[\$]?([\d,]+(?:\.\d+)?)',
             r'Total\s+operating\s+revenues?[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
-            r'(?:Total\s+)?Net\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+            r'(?:Total\s+)?Net\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'(?:Automotive\s+)?Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net\s+Revenue[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net\s+Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net\s+Operating\s+Revenue[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
         ],
         'Cost_of_Revenue': [
             r'Cost\s+of\s+(?:Revenue|Sales)[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
