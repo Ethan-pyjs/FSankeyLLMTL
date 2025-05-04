@@ -43,7 +43,7 @@ This project is designed to parse large financial documents into JSON files of j
     ```bash
     pip install -r requirements.txt
     ```
-6. Run the server
+6. Run the server (Note: Make sure ollama is installed and all models are ready)
     ```bash
     uvicorn main:app --reload
     ```
