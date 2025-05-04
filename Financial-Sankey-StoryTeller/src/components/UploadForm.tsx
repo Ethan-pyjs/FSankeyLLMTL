@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import SankeyChart from './SankeyChart'
 import ReactMarkdown from 'react-markdown'
+import GraphSelector from './GraphSelector';
+import BarChart from './BarChart';
+import WaterfallChart from './WaterfallChart';
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
@@ -10,6 +13,7 @@ export default function UploadForm() {
   const [progress, setProgress] = useState(0)
   const [progressMessage, setProgressMessage] = useState('')
   const [taskId, setTaskId] = useState<string | null>(null)
+  const [graphType, setGraphType] = useState('sankey');
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -235,9 +239,36 @@ export default function UploadForm() {
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Flow Visualization:</h2>
-                <div className="sankey-container" style={{ minHeight: "250px" }}>
+                <GraphSelector onSelect={setGraphType} currentType={graphType} />
+                
+                {graphType === 'sankey' && (
                   <SankeyChart incomeStatement={response.income_statement} />
-                </div>
+                )}
+                
+                {graphType === 'bar' && (
+                  <BarChart incomeStatement={response.income_statement} />
+                )}
+                
+                {graphType === 'waterfall' && (
+                  <WaterfallChart incomeStatement={response.income_statement} />
+                )}
+                
+                {graphType === 'all' && (
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Sankey Flow Diagram</h3>
+                      <SankeyChart incomeStatement={response.income_statement} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Bar Chart</h3>
+                      <BarChart incomeStatement={response.income_statement} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Waterfall Chart</h3>
+                      <WaterfallChart incomeStatement={response.income_statement} />
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
