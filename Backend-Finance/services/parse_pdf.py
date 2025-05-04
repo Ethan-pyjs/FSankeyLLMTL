@@ -392,7 +392,7 @@ def extract_llm_financial_data(text):
     
     FINANCIAL DOCUMENT TEXT:
     \"\"\"
-    {text[:4000]}
+    {text[:12000]}
     \"\"\"
     
     IMPORTANT: Return ONLY the JSON object, no markdown formatting, no explanations.

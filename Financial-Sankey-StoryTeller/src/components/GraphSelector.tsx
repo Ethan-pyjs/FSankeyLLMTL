@@ -10,6 +10,7 @@ const GraphSelector: FC<GraphSelectorProps> = ({ onSelect, currentType }) => {
     { id: 'sankey', name: 'Sankey Flow' },
     { id: 'bar', name: 'Bar Chart' },
     { id: 'waterfall', name: 'Waterfall' },
+    { id: 'trend', name: 'Year Comparison' },
     { id: 'all', name: 'All Graphs' }
   ];
 

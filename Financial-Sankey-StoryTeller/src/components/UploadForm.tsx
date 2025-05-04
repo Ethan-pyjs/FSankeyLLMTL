@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import GraphSelector from './GraphSelector';
 import BarChart from './BarChart';
 import WaterfallChart from './WaterfallChart';
+import TrendChart from './TrendChart';
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null)
@@ -253,6 +254,10 @@ export default function UploadForm() {
                   <WaterfallChart incomeStatement={response.income_statement} />
                 )}
                 
+                {graphType === 'trend' && (
+                  <TrendChart incomeStatement={response.income_statement} />
+                )}
+                
                 {graphType === 'all' && (
                   <div className="space-y-8">
                     <div>
@@ -266,6 +271,10 @@ export default function UploadForm() {
                     <div>
                       <h3 className="text-lg font-semibold mb-2 text-purple-300">Waterfall Chart</h3>
                       <WaterfallChart incomeStatement={response.income_statement} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Year-over-Year Comparison</h3>
+                      <TrendChart incomeStatement={response.income_statement} />
                     </div>
                   </div>
                 )}
