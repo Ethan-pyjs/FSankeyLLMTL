@@ -43,7 +43,7 @@ For detailed hardware/software requirements, [see requirements.md](./requirement
     ```
 2. Navigate to the project directory:
     ```bash
-    cd FinancialProject
+    cd Financial-Sankey-StoryTeller
     ```
 3. Install dependencies:
     ```bash
