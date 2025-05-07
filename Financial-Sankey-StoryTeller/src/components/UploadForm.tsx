@@ -14,6 +14,7 @@ export default function UploadForm() {
   const [progressMessage, setProgressMessage] = useState('')
   const [taskId, setTaskId] = useState<string | null>(null)
   const [graphType, setGraphType] = useState('sankey');
+  const [shouldSaveToArchive, setShouldSaveToArchive] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -49,9 +50,9 @@ export default function UploadForm() {
             };
             setResponse(results);
             
-            // Save to archive
-            if (file) {
-              saveToArchive(results, file.name);
+            // Only save if checkbox is checked
+            if (shouldSaveToArchive && file) {
+              saveToArchive(results, file.name, file.name);
             }
             
             setLoading(false);
@@ -151,10 +152,11 @@ export default function UploadForm() {
     return String(value);
   };
 
-  const saveToArchive = (results: any, fileName: string) => {
+  const saveToArchive = (results: any, fileName: string, displayName: string) => {
     const archiveItem = {
       id: crypto.randomUUID(),
       fileName,
+      displayName,
       timestamp: new Date().toISOString(),
       results
     };
@@ -163,6 +165,18 @@ export default function UploadForm() {
     const archives = savedArchives ? JSON.parse(savedArchives) : [];
     archives.unshift(archiveItem);
     localStorage.setItem('financial-archives', JSON.stringify(archives));
+    cleanupOldArchives();
+  };
+
+  // Add this utility function
+  const cleanupOldArchives = () => {
+    const savedArchives = localStorage.getItem('financial-archives');
+    if (savedArchives) {
+      const archives = JSON.parse(savedArchives);
+      // Keep only last 20 entries
+      const trimmedArchives = archives.slice(0, 20);
+      localStorage.setItem('financial-archives', JSON.stringify(trimmedArchives));
+    }
   };
 
   return (
@@ -179,12 +193,24 @@ export default function UploadForm() {
           
           <div className="flex flex-col">
             {file && (
-              <div className="mb-4 p-3 bg-gray-800 bg-opacity-50 rounded-md border border-purple-500 border-opacity-30">
-                <span className="text-gray-300 flex items-center justify-between">
-                  <span className="font-medium">Selected file:</span>
-                  <span className="ml-2 truncate">{file.name}</span>
-                </span>
-              </div>
+              <>
+                <div className="mb-4 p-3 bg-gray-800 bg-opacity-50 rounded-md border border-purple-500 border-opacity-30">
+                  <span className="text-gray-300 flex items-center justify-between">
+                    <span className="font-medium">Selected file:</span>
+                    <span className="ml-2 truncate">{file.name}</span>
+                  </span>
+                </div>
+                
+                <label className="flex items-center space-x-2 mb-4 text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={shouldSaveToArchive}
+                    onChange={(e) => setShouldSaveToArchive(e.target.checked)}
+                    className="form-checkbox h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                  />
+                  <span>Save analysis to archive</span>
+                </label>
+              </>
             )}
             
             <div className="flex items-center space-x-4">
