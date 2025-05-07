@@ -39,7 +39,7 @@ For detailed hardware/software requirements, [see requirements.md](./requirement
 ## Installation
 1. Clone the repository:
     ```bash
-    git clone [https://github.com/Ethan-pyjs/FinancialProject.git](https://github.com/Ethan-pyjs/FSankeyLLMTL.git)
+    git clone https://github.com/Ethan-pyjs/FSankeyLLMTL.git
     ```
 2. Navigate to the project directory:
     ```bash
