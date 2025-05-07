@@ -89,14 +89,6 @@ const Results = () => {
         </div>
         
         <div className="chart-container">
-          <h3 className="text-xl font-semibold mb-4 text-purple-200">
-            {graphType === 'sankey' && 'Cash Flow Visualization'}
-            {graphType === 'bar' && 'Financial Metrics Overview'}
-            {graphType === 'waterfall' && 'Profit Breakdown Analysis'}
-            {graphType === 'pie' && 'Cost Distribution Analysis'}
-            {graphType === 'margins' && 'Margin Performance Analysis'}
-          </h3>
-          
           {graphType === 'sankey' && (
             <SankeyChart incomeStatement={data.income_statement} />
           )}

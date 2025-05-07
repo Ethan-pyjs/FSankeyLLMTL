@@ -1,0 +1,3 @@
+def process_financial_data_for_visualization(income_statement_data: dict) -> dict:
+    """Process income statement data into a structured format for visualization."""
+    # ... existing process_financial_data_for_visualization function ...

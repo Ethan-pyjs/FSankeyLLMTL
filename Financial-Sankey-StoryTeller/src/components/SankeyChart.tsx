@@ -59,8 +59,6 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
         return;
       }
       
-      console.log("Processing income statement data:", incomeStatement);
-      
       // Clean and convert income statement data
       const cleanedData: Record<string, number> = {};
       const unknownFields: string[] = [];
@@ -93,9 +91,6 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
           unknownFields.push(key);
         }
       });
-      
-      console.log("Cleaned data:", cleanedData);
-      console.log("Unknown fields:", unknownFields);
       
       // Check if we have valid data for the main financial metrics
       const hasInvalidValues = Object.values(cleanedData).some(value => value === 0 || isNaN(value));
@@ -167,8 +162,6 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
       if (financialData.Net_Income !== 0 && financialData.Operating_Income === 0) {
         financialData.Operating_Income = financialData.Net_Income * 1.25; // Reverse estimate
       }
-      
-      console.log("Processed financial data:", financialData);
       
       // Create Sankey nodes with value property for reference
       const nodes: SankeyNode[] = [
@@ -306,9 +299,6 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
     );
   }
 
-  // Add debug information
-  console.log("Sankey data being rendered:", data);
-  
   // Enhanced custom Node component with dollar value labels
   const CustomNode = (props: any) => {
     const { x, y, width, height, index, payload } = props;
