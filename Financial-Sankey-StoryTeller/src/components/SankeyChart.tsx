@@ -415,7 +415,7 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
 
   return (
     <div className="w-full h-[400px] relative"> {/* Fixed height */}
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="125%">
         <Sankey
           data={data}
           node={<CustomNode />}

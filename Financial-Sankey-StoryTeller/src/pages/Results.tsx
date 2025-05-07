@@ -5,6 +5,8 @@ import BarChart from '../components/BarChart';
 import WaterfallChart from '../components/WaterfallChart';
 import FinancialStory from '../components/FinancialStory';
 import GraphSelector from '../components/GraphSelector';
+import PieChart from '../components/PieChart';
+import MarginChart from '../components/MarginChart';
 
 const Results = () => {
   const location = useLocation();
@@ -79,12 +81,22 @@ const Results = () => {
             options={[
               { value: 'sankey', label: 'Cash Flow Diagram' },
               { value: 'bar', label: 'Financial Metrics' },
-              { value: 'waterfall', label: 'Profit Analysis' }
+              { value: 'waterfall', label: 'Profit Analysis' },
+              { value: 'pie', label: 'Cost Distribution' },
+              { value: 'margins', label: 'Margin Analysis' }
             ]}
           />
         </div>
         
         <div className="chart-container">
+          <h3 className="text-xl font-semibold mb-4 text-purple-200">
+            {graphType === 'sankey' && 'Cash Flow Visualization'}
+            {graphType === 'bar' && 'Financial Metrics Overview'}
+            {graphType === 'waterfall' && 'Profit Breakdown Analysis'}
+            {graphType === 'pie' && 'Cost Distribution Analysis'}
+            {graphType === 'margins' && 'Margin Performance Analysis'}
+          </h3>
+          
           {graphType === 'sankey' && (
             <SankeyChart incomeStatement={data.income_statement} />
           )}
@@ -93,6 +105,12 @@ const Results = () => {
           )}
           {graphType === 'waterfall' && (
             <WaterfallChart incomeStatement={data.income_statement} />
+          )}
+          {graphType === 'pie' && (
+            <PieChart incomeStatement={data.income_statement} />
+          )}
+          {graphType === 'margins' && (
+            <MarginChart incomeStatement={data.income_statement} />
           )}
         </div>
       </div>

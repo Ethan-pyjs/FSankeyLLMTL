@@ -315,7 +315,8 @@ export default function UploadForm() {
                       { value: 'sankey', label: 'Cash Flow Diagram' },
                       { value: 'bar', label: 'Financial Metrics' },
                       { value: 'waterfall', label: 'Profit Analysis' },
-                      { value: 'year-over-year', label: 'Year-over-Year Changes' }
+                      { value: 'pie', label: 'Cost Distribution' },
+                      { value: 'margins', label: 'Margin Analysis' }
                     ]}
                   />
                 </div>
