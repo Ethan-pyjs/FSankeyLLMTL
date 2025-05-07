@@ -34,7 +34,7 @@ export default function About() {
         {/* Introduction Section */}
         <div className="prose prose-invert max-w-none mb-8">
           <p className="text-gray-300 text-lg leading-relaxed">
-            My name is Ethan, I am a student studying Artificial Intelligence and Robotics. I'm very
+            I am a student studying Artificial Intelligence and Robotics. I'm very
             passionate about technology and am a strong believer in lifelong learning. This project
             was my final project for my Finance in AI class. I hope that anyone who comes across this
             project finds it useful and informative. I would suggest that you try out different LLMs and see how they perform.
@@ -49,7 +49,7 @@ export default function About() {
           <h2 className="text-2xl font-semibold text-purple-300 mb-4">Get in Touch</h2>
           <p className="text-gray-300">
             I'm always interested in connecting with fellow developers and financial technology enthusiasts.
-            Feel free to reach out through any of my social links above or email me directly at{' '}
+            Feel free to reach out through my linkedin above or email me directly at{' '}
             <a
               href="mailto:phamethanv@gmail.com"
               className="text-purple-400 hover:text-purple-300 transition-colors duration-200"

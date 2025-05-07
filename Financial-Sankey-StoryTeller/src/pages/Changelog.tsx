@@ -14,15 +14,25 @@ export default function Changelog() {
               </ul>
             </div>
             <div className="border-b border-purple-500 border-opacity-20 pb-4">
-              <h2 className="text-xl font-semibold text-purple-200">v1.1.0 ALPHA(2025-05-3)</h2>
+              <h2 className="text-xl font-semibold text-purple-200">v1.0.0 BETA(2025-05-3)</h2>
               <ul className="list-disc list-inside text-gray-300 mt-2">
                 <li>Improved Quality of Life</li>
                 <li>Minor Fine Tuning</li>
                 <li>Prepped for demonstration in class</li>
               </ul>
           </div>
+            <div className="border-b border-purple-500 border-opacity-20 pb-4">
+              <h2 className="text-xl font-semibold text-purple-200">v1.0.1 BETA(2025-05-6)</h2>
+              <ul className="list-disc list-inside text-gray-300 mt-2">
+                <li>Massive overhaul of frontend</li>
+                <li>Minor bug fixes</li>
+                <li>Added more customization options for users</li>
+              </ul>
+            </div>
+            <div className="border-b border-purple-500 border-opacity-20 pb-4">
+            </div>
+          </div>
         </div>
       </div>
-    </div>
     );
   }
