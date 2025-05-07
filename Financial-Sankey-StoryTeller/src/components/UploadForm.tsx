@@ -42,11 +42,18 @@ export default function UploadForm() {
           // Handle completion
           if (data.status === "completed") {
             console.log("Processing completed:", data);
-            setResponse({
+            const results = {
               income_statement: data.income_statement,
               story: data.story,
               processing_time: data.processing_time
-            });
+            };
+            setResponse(results);
+            
+            // Save to archive
+            if (file) {
+              saveToArchive(results, file.name);
+            }
+            
             setLoading(false);
             eventSource.close();
           }
@@ -142,6 +149,20 @@ export default function UploadForm() {
       }).format(value);
     }
     return String(value);
+  };
+
+  const saveToArchive = (results: any, fileName: string) => {
+    const archiveItem = {
+      id: crypto.randomUUID(),
+      fileName,
+      timestamp: new Date().toISOString(),
+      results
+    };
+
+    const savedArchives = localStorage.getItem('financial-archives');
+    const archives = savedArchives ? JSON.parse(savedArchives) : [];
+    archives.unshift(archiveItem);
+    localStorage.setItem('financial-archives', JSON.stringify(archives));
   };
 
   return (

@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Changelog from './pages/Changelog';
 import Results from './pages/Results';
+import Archive from './pages/Archive';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             <Route path="/results" element={<Results />} />
             <Route path="/about" element={<About />} />
             <Route path="/changelog" element={<Changelog />} />
+            <Route path="/archive" element={<Archive />} />
           </Routes>
         </main>
       </div>

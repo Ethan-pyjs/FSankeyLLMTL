@@ -4,6 +4,13 @@ import { Link } from 'react-router-dom';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const navItems = [
+    { path: '/', label: 'Home' },
+    { path: '/archive', label: 'Archive' },
+    { path: '/about', label: 'About' },
+    { path: '/changelog', label: 'Changelog' },
+  ];
+
   return (
     <nav className="bg-gray-900 bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg w-full">
       <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -14,24 +21,15 @@ const Navbar = () => {
             </Link>
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
-                <Link
-                  to="/"
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/about"
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  About
-                </Link>
-                <Link
-                  to="/changelog"
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Changelog
-                </Link>
+                {navItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
