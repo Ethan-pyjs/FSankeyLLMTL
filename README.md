@@ -3,11 +3,17 @@
 ## Description
 This project is designed to parse large financial documents into JSON files of just the income statements. The idea is to find the context and "story" of what the data shows and use an LLM to explain it.
 
+## Preview
+![App Screenshot](./assets/screenshot.png)
+
+> The home page of Financial Sankey Story-Teller — upload a PDF, and the app generates a story and a Sankey chart from your financial data.
+
 ## Tech Stack
 - **Frontend**: React & Vite & TypeScript + recharts
 - **Middleware**: FastAPI & CORS (Cross-Origin Resource Sharing)
 - **Backend**: Python & PyMuPDF
 - **LLMS**: Granite 3.3  & 3.2-vision
+
 
 ### Specific Use Case
 - Vite: Open Source React and TypeScript Packaged Framework
