@@ -31,6 +31,11 @@ This project is designed to parse large financial documents into JSON files of j
 - Granite 3.3: Works well with 3.2-vision model, used for story generation.
 - Granite 3.2-vision: Specifically fine-tuned for documents and looking at charts, graphs, and such. Used for creating a JSON and getting the income statement.
 
+
+## 📦 System Requirements
+
+For detailed hardware/software requirements, [see requirements.md](./requirements.md).
+
 ## Installation
 1. Clone the repository:
     ```bash
