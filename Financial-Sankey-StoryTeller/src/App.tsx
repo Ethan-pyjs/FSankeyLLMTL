@@ -4,7 +4,7 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Changelog from './pages/Changelog';
 import Results from './pages/Results';
-import Archive from './pages/Archive';
+import Archive from './pages/archive';
 
 export default function App() {
   return (

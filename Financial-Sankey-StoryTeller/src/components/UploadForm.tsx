@@ -15,6 +15,7 @@ export default function UploadForm() {
   const [taskId, setTaskId] = useState<string | null>(null)
   const [graphType, setGraphType] = useState('sankey');
   const [shouldSaveToArchive, setShouldSaveToArchive] = useState(true);
+  const [contextNotes, setContextNotes] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -158,6 +159,7 @@ export default function UploadForm() {
       fileName,
       displayName,
       timestamp: new Date().toISOString(),
+      contextNotes: contextNotes.trim() || null, // Include context notes
       results
     };
 
@@ -201,15 +203,32 @@ export default function UploadForm() {
                   </span>
                 </div>
                 
-                <label className="flex items-center space-x-2 mb-4 text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={shouldSaveToArchive}
-                    onChange={(e) => setShouldSaveToArchive(e.target.checked)}
-                    className="form-checkbox h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                  />
-                  <span>Save analysis to archive</span>
-                </label>
+                <div className="w-full space-y-4">
+                  <div className="space-y-3">
+                    <label className="block text-gray-300 text-sm font-medium">
+                      Add Context Notes (optional)
+                    </label>
+                    <textarea
+                      value={contextNotes}
+                      onChange={(e) => setContextNotes(e.target.value)}
+                      placeholder="Add any additional context or notes about this financial document..."
+                      className="w-full h-24 px-3 py-2 text-gray-300 bg-gray-800 bg-opacity-50 
+                        rounded-md border border-purple-500 border-opacity-30 
+                        focus:border-purple-400 focus:ring-1 focus:ring-purple-400 
+                        focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  <label className="flex items-center space-x-2 mb-4 text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={shouldSaveToArchive}
+                      onChange={(e) => setShouldSaveToArchive(e.target.checked)}
+                      className="form-checkbox h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                    />
+                    <span>Save analysis to archive</span>
+                  </label>
+                </div>
               </>
             )}
             
