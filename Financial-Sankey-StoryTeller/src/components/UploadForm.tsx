@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import SankeyChart from './SankeyChart'
 import ReactMarkdown from 'react-markdown'
-import GraphSelector from './GraphSelector';
+import GraphSelector from './GraphSelector'
 import BarChart from './BarChart';
 import WaterfallChart from './WaterfallChart';
 
@@ -206,6 +206,7 @@ export default function UploadForm() {
         {response && (
           <div className="mt-8">
             <div className="grid grid-cols-1 gap-6">
+              {/* Income Statement Data Table */}
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Income Statement Data:</h2>
                 <div className="overflow-x-auto">
@@ -237,40 +238,41 @@ export default function UploadForm() {
                 </div>
               </div>
               
+              {/* Financial Visualization Section */}
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
-                <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Flow Visualization:</h2>
-                <GraphSelector onSelect={setGraphType} currentType={graphType} />
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-purple-200">Financial Visualizations</h2>
+                  <GraphSelector 
+                    selectedType={graphType} 
+                    onSelect={setGraphType} 
+                    options={[
+                      { value: 'sankey', label: 'Cash Flow Diagram' },
+                      { value: 'bar', label: 'Financial Metrics' },
+                      { value: 'waterfall', label: 'Profit Analysis' },
+                      { value: 'year-over-year', label: 'Year-over-Year Changes' }
+                    ]}
+                  />
+                </div>
                 
-                {graphType === 'sankey' && (
-                  <SankeyChart incomeStatement={response.income_statement} />
-                )}
-                
-                {graphType === 'bar' && (
-                  <BarChart incomeStatement={response.income_statement} />
-                )}
-                
-                {graphType === 'waterfall' && (
-                  <WaterfallChart incomeStatement={response.income_statement} />
-                )}
-                
-                {graphType === 'all' && (
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Sankey Flow Diagram</h3>
-                      <SankeyChart incomeStatement={response.income_statement} />
+                <div className="chart-container">
+                  {graphType === 'sankey' && (
+                    <SankeyChart incomeStatement={response.income_statement} />
+                  )}
+                  {graphType === 'bar' && (
+                    <BarChart incomeStatement={response.income_statement} />
+                  )}
+                  {graphType === 'waterfall' && (
+                    <WaterfallChart incomeStatement={response.income_statement} />
+                  )}
+                  {graphType === 'year-over-year' && (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-400">Year-over-Year analysis coming soon...</p>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Bar Chart</h3>
-                      <BarChart incomeStatement={response.income_statement} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2 text-purple-300">Waterfall Chart</h3>
-                      <WaterfallChart incomeStatement={response.income_statement} />
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               
+              {/* Financial Analysis Section */}
               <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
                 <h2 className="text-xl font-semibold mb-2 text-purple-200">Financial Analysis:</h2>
                 <div className="bg-blue-800 p-4 rounded overflow-y-auto max-h-80 text-gray-200 text-left">

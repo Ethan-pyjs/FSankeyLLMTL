@@ -414,49 +414,41 @@ export default function SankeyChart({ incomeStatement }: SankeyChartProps) {
   };
 
   return (
-    <div className="w-full" style={{ height: "350px", minHeight: "650px" }}> {/* Increased height to accommodate labels */}
-      <div className="w-full h-full bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-purple-500 border-opacity-20">
-        {/* Force a specific height for the container to ensure visibility */}
-        <div style={{ width: '80%', height: '600px', position: 'relative' }}> {/* Increased height */}
-          <ResponsiveContainer width="100%" height="100%">
-            <Sankey
-              data={data}
-              node={<CustomNode />}
-              link={{ 
-              stroke: "#8B5CF6", // Purple color for links
-              strokeOpacity: 0.3,
-              fillOpacity: 0.5,
-              fill: "#8B5CF6" // Purple color for link fill
-              }}
-              margin={{ top: 20, right: 100, bottom: 50, left: 50 }}
-              nodePadding={20}
-              nodeWidth={13}
-              iterations={64}
-            >
-              <Tooltip 
-              formatter={(value: any, _name: any, props: any) => {
-                // Use the absoluteValue if available for better display
-                const displayValue = props.payload.absoluteValue !== undefined 
-                ? props.payload.absoluteValue 
-                : value;
-                return formatCurrencyDetailed(displayValue);
-              }}
-              labelFormatter={(name) => `${name}`}
-              contentStyle={{ 
-                backgroundColor: 'rgba(17, 24, 39, 0.95)', 
-                border: '1px solid #8B5CF6', // Purple border for tooltip
-                borderRadius: '4px',
-                padding: '8px',
-                color: '#E5E7EB' 
-              }}
-              />
-            </Sankey>
-          </ResponsiveContainer>
-        </div>
-      </div>
-      <p className="text-xs text-gray-400 mt-2 italic">
-        Note: This project is in development. The Sankey chart is a work in progress and may not reflect all financial flows accurately.
-      </p>
+    <div className="w-full h-[400px] relative"> {/* Fixed height */}
+      <ResponsiveContainer width="100%" height="100%">
+        <Sankey
+          data={data}
+          node={<CustomNode />}
+          link={{ 
+          stroke: "#8B5CF6", // Purple color for links
+          strokeOpacity: 0.3,
+          fillOpacity: 0.5,
+          fill: "#8B5CF6" // Purple color for link fill
+          }}
+          margin={{ top: 20, right: 100, bottom: 50, left: 50 }}
+          nodePadding={20}
+          nodeWidth={13}
+          iterations={64}
+        >
+          <Tooltip 
+          formatter={(value: any, _name: any, props: any) => {
+            // Use the absoluteValue if available for better display
+            const displayValue = props.payload.absoluteValue !== undefined 
+            ? props.payload.absoluteValue 
+            : value;
+            return formatCurrencyDetailed(displayValue);
+          }}
+          labelFormatter={(name) => `${name}`}
+          contentStyle={{ 
+            backgroundColor: 'rgba(17, 24, 39, 0.95)', 
+            border: '1px solid #8B5CF6', // Purple border for tooltip
+            borderRadius: '4px',
+            padding: '8px',
+            color: '#E5E7EB' 
+          }}
+          />
+        </Sankey>
+      </ResponsiveContainer>
     </div>
   );
 }

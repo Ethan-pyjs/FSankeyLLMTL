@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import About from './pages/About';
 import Changelog from './pages/Changelog';
+import Results from './pages/Results';
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <main className="container mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/results" element={<Results />} />
             <Route path="/about" element={<About />} />
             <Route path="/changelog" element={<Changelog />} />
           </Routes>
