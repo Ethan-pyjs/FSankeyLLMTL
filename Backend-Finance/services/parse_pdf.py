@@ -2,12 +2,198 @@ import json
 import fitz  # PyMuPDF
 import re
 from services.model_runner import query_model
-from .pdf_processing.text_extraction import extract_text_from_pdf, clean_text_for_extraction
-from .pdf_processing.scale_detection import detect_scale_notation
-from .pdf_processing.value_extraction import extract_financial_values_with_patterns
-from .pdf_processing.data_validation import validate_financial_data, format_financial_value, infer_missing_values
-from .pdf_processing.data_processing import process_financial_data_for_visualization
-from .pdf_processing.llm_extraction import extract_llm_financial_data
+
+def extract_text_from_pdf(pdf_bytes):
+    """Extract text from PDF bytes."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text("text") + "\n\n"
+    return text
+
+def detect_scale_notation(text):
+    """Detect if numbers are in millions, billions, etc."""
+    text = text.lower()
+    
+    billion_patterns = [
+        r'\(in billions\)', r'\(billions\)', r'\(in bb\)',
+        r'amounts.*billions', r'expressed.*billions',
+        r'figures.*billions', r'numbers.*billions'
+    ]
+    
+    million_patterns = [
+        r'\(in millions\)', r'\(millions\)', r'\(in mm\)',
+        r'amounts.*millions', r'expressed.*millions',
+        r'figures.*millions', r'numbers.*millions'
+    ]
+    
+    thousand_patterns = [
+        r'\(in thousands\)', r'\(thousands\)', r'\(in k\)',
+        r'amounts.*thousands', r'expressed.*thousands',
+        r'figures.*thousands', r'numbers.*thousands'
+    ]
+    
+    header_footer_text = text[:2000] + text[-2000:]
+    
+    for pattern in billion_patterns:
+        if re.search(pattern, header_footer_text):
+            return 1_000_000_000
+    
+    for pattern in million_patterns:
+        if re.search(pattern, header_footer_text):
+            return 1_000_000
+    
+    for pattern in thousand_patterns:
+        if re.search(pattern, header_footer_text):
+            return 1_000
+    
+    return 1
+
+def clean_text_for_extraction(text):
+    """Prepare text for pattern matching."""
+    text = re.sub(r'\s+', ' ', text)
+    financial_terms = [
+        "revenue", "total revenue", "sales", "net sales",
+        "cost of revenue", "cost of goods sold", "cogs",
+        "gross profit", "gross margin",
+        "operating expenses", "total operating expenses", "opex",
+        "operating income", "operating profit", "ebit",
+        "net income", "net profit", "net earnings"
+    ]
+    
+    for term in financial_terms:
+        text = re.sub(r'(\b' + term + r'\b)', r' \1 ', text, flags=re.IGNORECASE)
+    
+    return text
+
+def extract_financial_values_with_patterns(text):
+    """Extract financial values using regex patterns."""
+    results = {}
+    
+    financial_patterns = {
+        'Revenue': [
+            r'(?:Total\s+)?Revenue[s]?[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Total Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Cost_of_Revenue': [
+            r'Cost of Revenue[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Cost of Sales[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'COGS[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Gross_Profit': [
+            r'Gross Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Gross Margin[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Operating_Expenses': [
+            r'(?:Total\s+)?Operating Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Total Expenses[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Operating Costs[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Operating_Income': [
+            r'Operating Income[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Operating Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'EBIT[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ],
+        'Net_Income': [
+            r'Net Income[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net Profit[:\s]+[\$]?([\d,]+(?:\.\d+)?)',
+            r'Net Earnings[:\s]+[\$]?([\d,]+(?:\.\d+)?)'
+        ]
+    }
+    
+    for key, patterns in financial_patterns.items():
+        for pattern in patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                value = match.group(1)
+                if value:
+                    try:
+                        numeric_value = normalize_number(value)
+                        if key not in results or numeric_value > results[key]:
+                            results[key] = numeric_value
+                    except ValueError:
+                        continue
+    
+    return results
+
+def normalize_number(value_str):
+    """Convert a string representation of a number to a float value."""
+    if isinstance(value_str, (int, float)):
+        return float(value_str)
+    
+    cleaned = re.sub(r'[^\d.-]', '', str(value_str))
+    
+    if value_str.strip().startswith('(') and value_str.strip().endswith(')'):
+        cleaned = '-' + cleaned
+    
+    return float(cleaned) if cleaned else 0.0
+
+def extract_llm_financial_data(text):
+    """Extract financial data using LLM."""
+    prompt = f"""Extract the following financial values from the text in pure numbers (no currency symbols or commas):
+    - Revenue
+    - Cost of Revenue
+    - Gross Profit
+    - Operating Expenses
+    - Operating Income
+    - Net Income
+
+    Text: {text}
+
+    Return the values in JSON format."""
+    
+    try:
+        response = query_model(prompt)
+        return json.loads(response)
+    except Exception as e:
+        print(f"Error in LLM extraction: {str(e)}")
+        return {}
+
+def validate_financial_data(data):
+    """Perform reasonableness checks on financial data."""
+    validated = data.copy()
+    
+    if validated.get('Gross_Profit', 0) > validated.get('Revenue', 0):
+        validated['Gross_Profit'] = validated.get('Revenue', 0) - validated.get('Cost_of_Revenue', 0)
+    
+    if validated.get('Operating_Income', 0) > validated.get('Gross_Profit', 0):
+        validated['Operating_Income'] = validated.get('Gross_Profit', 0) - validated.get('Operating_Expenses', 0)
+    
+    if validated.get('Net_Income', 0) > validated.get('Operating_Income', 0):
+        validated['Net_Income'] = validated.get('Operating_Income', 0)
+    
+    return validated
+
+def format_financial_value(value, scale_factor=1):
+    """Format and scale financial values."""
+    if isinstance(value, str) and value.lower() == 'unknown':
+        return 'Unknown'
+    
+    try:
+        if isinstance(value, str):
+            value = normalize_number(value)
+        return float(value) * scale_factor
+    except (ValueError, TypeError):
+        return 'Unknown'
+
+def infer_missing_values(data):
+    """Fill in missing values using financial relationships."""
+    result = data.copy()
+    
+    if 'Revenue' not in result or result['Revenue'] == 'Unknown':
+        if 'Gross_Profit' in result and 'Cost_of_Revenue' in result:
+            result['Revenue'] = result['Gross_Profit'] + result['Cost_of_Revenue']
+    
+    if 'Gross_Profit' not in result or result['Gross_Profit'] == 'Unknown':
+        if 'Revenue' in result and 'Cost_of_Revenue' in result:
+            result['Gross_Profit'] = result['Revenue'] - result['Cost_of_Revenue']
+    
+    if 'Operating_Income' not in result or result['Operating_Income'] == 'Unknown':
+        if 'Gross_Profit' in result and 'Operating_Expenses' in result:
+            result['Operating_Income'] = result['Gross_Profit'] - result['Operating_Expenses']
+    
+    return result
 
 def extract_income_statement(pdf_bytes):
     """Main function to extract and process income statement data."""
