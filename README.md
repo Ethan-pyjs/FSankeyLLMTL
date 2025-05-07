@@ -8,6 +8,11 @@ This project is designed to parse large financial documents into JSON files of j
 
 > The home page of Financial Sankey Story-Teller — upload a PDF, and the app generates a story and a Sankey chart from your financial data.
 
+## Demo
+![Demo](./assets/demo.gif)
+
+> This is a demo of the financial results done with NVIDIA
+
 ## Tech Stack
 - **Frontend**: React & Vite & TypeScript + recharts
 - **Middleware**: FastAPI & CORS (Cross-Origin Resource Sharing)
